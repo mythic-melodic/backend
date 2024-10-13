@@ -1,7 +1,28 @@
 {
+  "name": "melodic-backend",
+  "version": "1.0.0",
+  "description": "Melodic - Music streaming website",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mythic-melodic/backend.git"
+  },
+  "keywords": [
+    "music",
+    "app"
+  ],
+  "author": "Mythic",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mythic-melodic/backend/issues"
+  },
+  "homepage": "https://github.com/mythic-melodic/backend#readme",
   "dependencies": {
     "dotenv": "^16.4.5",
     "pg": "^8.13.0"
-  },
-  "type": "module"
+  }
 }
