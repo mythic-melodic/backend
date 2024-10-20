@@ -1,8 +1,6 @@
 import pg from "pg";
 import dotenv from "dotenv";
-
 dotenv.config();
-
 const { Pool } = pg;
 
 const pool = new Pool({
@@ -15,6 +13,7 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false,
   },
+  debug: false,
 });
 
 export default pool;
