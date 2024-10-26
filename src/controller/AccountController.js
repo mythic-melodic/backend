@@ -4,8 +4,17 @@ import pool from '../config/db.connect.js';
 
 class AccountController {
     async signup(req, res) {
-        const { username, display_name,  email, password, user_role } = req.body;
+        const {username, display_name,  email, password} = req.body;
+        const user_role = 'user';
         try {
+            const user = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+            if(user.rows.length > 0){
+                return res.status(400).send('User already exists');
+            }
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+            await pool.query('INSERT INTO users (username, display_name, email, password, user_role) VALUES ($1, $2, $3, $4, $5)', [username, display_name, email, hashedPassword, user_role]);
+            res.status(201).send('User created');
             
         } catch (error) {
             res.status(500).send('Error: ' + error.message);
