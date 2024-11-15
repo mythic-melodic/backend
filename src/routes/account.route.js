@@ -8,5 +8,7 @@ router.post('/register', accountController.signup );
 router.post('/login', accountController.login);
 router.get('/logout', accountController.logout);
 router.get('/info', accountController.getInfo);
+router.delete('/delete/:id', accountController.deleteUser);
+router.get('/all', accountController.getAllUsers);
 
 export default router;

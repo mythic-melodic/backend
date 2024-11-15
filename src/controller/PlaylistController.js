@@ -85,7 +85,7 @@ class PlaylistController {
                 if (error) {
                     res.status(400).send(error);
                 }
-                res.status(200).send({"message": result});
+                res.status(200).send({success: true, message: "Playlist deleted successfully", result});
             });
         } catch (error) {
             res.status(500).send("Error: " + error.message);
