@@ -10,7 +10,7 @@ router.post("/upload", upload.single('file'), driveController.upload);
 // router.get("/list", getAllFiles);
 //
 router.get('/load-file', (req, res) => {
-    res.sendFile('upload.html', { root: 'D:/Github/MythicProject/backend/src/templates' });
+    res.sendFile('upload.html', { root: 'src/templates' });
 });
 
 
