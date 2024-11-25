@@ -14,7 +14,7 @@ router.post('/:id/track', tokenMiddleware.authenticateToken, playlistController.
 router.delete('/:id/track', tokenMiddleware.authenticateToken, playlistController.deleteTrackFromPlaylist);
 // router.patch('/:id/order', tokenMiddleware.authenticateToken, playlistController.changeTrackOrder);
 
-router.delete('/delete/:id', tokenMiddleware.authenticateToken, playlistController.deletePlaylist);
+router.delete('/delete/:id',  playlistController.deletePlaylist);
 router.put('/update/:id', tokenMiddleware.authenticateToken, playlistController.updatePlaylist);
 router.get('/:id', tokenMiddleware.authenticateToken, playlistController.getPlaylistById);
 
