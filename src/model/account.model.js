@@ -30,16 +30,16 @@ const AccountModel = {
             );
     
 
-            callback(null, { auth: true, token: token });
+            callback(null, { auth: true, token: token , role: user.user_role, user_id: user.id});
         } catch (error) {
             console.error('Login error:', error);
             callback('An error occurred during login');
         }
     },
     
-    
-    signup: async (username, password, email, display_name, callback) => {
+    signup: async (userData, callback) => {
         const user_role = 'user';
+        const { username, display_name, email, password } = userData;
         try {
             const query = `SELECT * FROM users WHERE username = $1`;
             const user = await pool.query(query, [username]);
