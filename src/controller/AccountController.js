@@ -2,9 +2,9 @@ import AccountModel from '../model/account.model.js';
 
 class AccountController {
     async signup(req, res) {
-        const {username, display_name,  email, password} = req.body;
+        const user = req.body;
         try {
-            AccountModel.signup(username, password, email, display_name, (error, result) => {
+            AccountModel.signup(user, (error, result) => {
                 if(error){
                     res.status(400).send(error);
                 }
@@ -45,6 +45,7 @@ class AccountController {
         }
 
     }
+    
     async getAllUsers(req, res) {
         try{
             AccountModel.getAllUsers((error, result) => {
