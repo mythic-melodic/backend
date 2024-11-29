@@ -21,7 +21,6 @@ class MerchandiseController {
     const { name, album_id, stock, price, image, description } = req.body;
     const artist_id = req.user.id;
 
-    console.log("artist_id", artist_id);
     try {
       const result = await MerchandiseModel.createMerchandise(
         name,
@@ -73,61 +72,65 @@ class MerchandiseController {
     const merchandise_id = req.params.id;
     const artist_id = req.user.id;
     const { name, album_id, stock, price, image, description } = req.body;
+    console.log("artist_id", artist_id);
 
     try {
-      MerchandiseModel.getMerchandiseById(merchandise_id, (error, result) => {
-        if (error) {
-          res.status(400).send("Error: " + error.message);
-        }
+      const existingMerchandise = await MerchandiseModel.getMerchandiseById(
+        merchandise_id
+      );
+      if (!existingMerchandise) {
+        return res.status(404).send("No merchandise found");
+      }
 
-        if (result[0].artist_id !== artist_id) {
-          return res.status(403).json({
-            message: "You do not have permission to update this merchandise.",
-          });
-        }
-      });
+      if (existingMerchandise.artist_id !== artist_id) {
+        return res.status(403).json({
+          message: "Unauthorized to update this merchandise.",
+        });
+      }
 
-      MerchandiseModel.updateMerchandise(
+      const updatedMerchandise = await MerchandiseModel.updateMerchandise(
         merchandise_id,
         name,
-        artist_id,
         album_id,
         stock,
         price,
         image,
-        description,
-        (error, result) => {
-          if (error) {
-            res.status(400).send("Error: " + error.message);
-          }
-          res.status(200).send(result);
-        }
+        description
       );
+      res.status(200).json({
+        message: "Merchandise updated successfully",
+        updatedMerchandise,
+      });
     } catch (error) {
-      res.status(500).send("Error: " + error.message);
+      res.status(500).json({ message: "Error: " + error.message });
     }
   }
 
   async deleteMerchandise(req, res) {
     const merchandise_id = req.params.id;
+    const artist_id = req.user.id;
 
     try {
-      MerchandiseModel.deleteMerchandise(merchandise_id, (error, result) => {
-        if (error) {
-          res.status(400).send("Error: " + error.message);
-        }
+      const existingMerchandise = await MerchandiseModel.getMerchandiseById(
+        merchandise_id
+      );
+      if (!existingMerchandise) {
+        return res.status(404).send("No merchandise found");
+      }
 
-        if (result[0].artist_id !== req.user.id) {
-          return res.status(403).json({
-            message: "You do not have permission to delete this merchandise.",
-          });
-        }
-        res
-          .status(200)
-          .send({ success: true, message: "Merchandise deleted." });
+      if (existingMerchandise.artist_id !== artist_id) {
+        return res.status(403).json({
+          message: "Unauthorized to delete this merchandise.",
+        });
+      }
+
+      await MerchandiseModel.deleteMerchandise(merchandise_id);
+      res.status(200).json({
+        message: "Merchandise deleted successfully",
+        deleteMerchandise: existingMerchandise,
       });
     } catch (error) {
-      res.status(500).send("Error: " + error.message);
+      res.status(500).json({ message: "Error: " + error.message });
     }
   }
 }

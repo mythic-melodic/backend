@@ -8,7 +8,7 @@ const MerchandiseModel = {
     stock,
     price,
     image,
-    description,
+    description
   ) => {
     try {
       const query = `
@@ -75,10 +75,10 @@ const MerchandiseModel = {
     description
   ) => {
     try {
-      const query = `UPDATE merchandise SET name = $1, album_id = $2, stock = $3, price = $4, image = $5, description = $6, updated_at = CURRENT_TIMESTAMP WHERE id = $8`;
-      await pool.query(query, [
+      const query = `UPDATE merchandise SET name = $1, album_id = $2, stock = $3, price = $4, image = $5, description = $6 WHERE id = $7 RETURNING *;
+`;
+      const result = await pool.query(query, [
         name,
-        artistId,
         albumId,
         stock,
         price,
@@ -86,9 +86,12 @@ const MerchandiseModel = {
         description,
         merchandiseId,
       ]);
-      return callback(null, "Merchandise updated");
+      if (result.rows.length === 0) {
+        throw new Error("Failed to update merchandise, no such record found.");
+      }
+      return result.rows[0];
     } catch (error) {
-      return callback(error);
+      throw new Error("Failed to update merchandise: " + error.message);
     }
   },
 
