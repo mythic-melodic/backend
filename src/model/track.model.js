@@ -54,7 +54,7 @@ const TrackModel = {
                       FROM tracks
                       inner JOIN track_album AS t1 ON tracks.id = t1.track_id
                       inner JOIN albums ON albums.id = t1.album_id
-                      WHERE tracks.status = 'disable';`;
+                      WHERE tracks.track_url IS NOT NULL AND tracks.status = 'disable';`;
       //tracks.track_url IS NOT NULL AND                 
       const result = await pool.query(query);
       return callback(null, result.rows);
@@ -79,7 +79,7 @@ const TrackModel = {
   },
   disableTrack: async (id, callback) => {
     try {
-      const query = `UPDATE tracks SET status = 'disable' WHERE id = $1`;
+      const query = `DELETE FROM tracks WHERE id = $1`;
       const result = await pool.query(query, [id]);
       return callback(null, result);
     } catch (error) {
@@ -206,6 +206,24 @@ const TrackModel = {
       }
     }
       const mainArtistProfit = 100 - sumProfit;
+      // if(mainArtistProfit < 0){
+      //   return callback({ status: 400, message: "Profit share is invalid" });
+      // }
+      if(mainArtistProfit === 100){
+        const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share, status) VALUES ($1, $2, $3, $4. $5)`;
+        await pool.query(mainArtistQuery, [
+            user_id,
+            trackResult.rows[0].id,
+            'original artist',
+            mainArtistProfit,
+            'approved'
+        ]);
+        return callback(null, {
+          status: 200,
+          message: "Track added successfully",
+          track: trackResult.rows[0],
+        });
+      }
       const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share) VALUES ($1, $2, $3, $4)`;
       await pool.query(mainArtistQuery, [
           user_id,
