@@ -22,9 +22,9 @@ const TrackModel = {
       const genreQuery = `SELECT genre_id FROM track_genre WHERE track_id = $1`;
       const genreResult = await pool.query(genreQuery, [id]);
 
-      const artistQuery = `SELECT users.display_name FROM uploads_user_track 
-                                 INNER JOIN users ON uploads_user_track.user_id = users.id 
-                                 WHERE uploads_user_track.track_id = $1`;
+      const artistQuery = `SELECT users.display_name FROM user_track
+                            INNER JOIN users ON user_track.user_id = users.id 
+                            WHERE user_track.track_id = $1`;
       const artistResult = await pool.query(artistQuery, [id]);
 
       const result = {
@@ -62,8 +62,13 @@ const TrackModel = {
       return callback(error);
     }
   },
+
   enableTrack: async (id, callback) => {
     try {
+      const checkCollaborator = await pool.query(`SELECT * FROM user_track WHERE track_id = $1 and status ='approved'`, [id]);
+      if (checkCollaborator.rowCount === 0) {
+        return callback("Track not approved by collaborator");
+      }
       const query = `UPDATE tracks SET status = 'public' WHERE id = $1`;
       const result = await pool.query(query, [id]);
       return callback(null, result);
@@ -81,6 +86,7 @@ const TrackModel = {
       return callback(error);
     }
   },
+  
   deleteTrackById: async (id, callback) => {
     try {
       const check = await pool.query(`SELECT * FROM tracks WHERE id = $1`, [
@@ -110,14 +116,13 @@ const TrackModel = {
         duration,
         language,
         user_id,
-        artist_role,
         genre,
         album,
       } = track;
       // const user_id = 8;
       // const artist_role = 'original artist';
       const id = createId();
-      const genreID = genre.toLowerCase();
+  
       // Step 1: Check if the user exists
       const userCheckQuery = `SELECT * FROM users WHERE id = $1`;
       const checkArtist = await pool.query(userCheckQuery, [user_id]);
@@ -130,12 +135,7 @@ const TrackModel = {
       if (checkArtist.rows[0].user_role !== "artist") {
         return callback({ status: 403, message: "User is not an artist" });
       }
-      // Step 3: check if the album exists
-      // const albumCheckQuery = `SELECT * FROM albums WHERE title= $1`;
-      // const checkAlbum = await pool.query(albumCheckQuery, [album]);
-      // if (checkAlbum.rowCount === 0) {
-      //     return callback({ status: 404, message: 'Album not found' });
-      // }
+  
 
       // Step 3: Insert track into `tracks` table
       const insertTrackQuery = `
@@ -152,36 +152,69 @@ const TrackModel = {
         track_url,
       ]);
 
-      // Step 4: Update the `uploads_user_track` table
-      const relateQuery = `
-                INSERT INTO uploads_user_track (user_id, track_id, artist_role) VALUES ($1, $2, $3)
-            `;
-      await pool.query(relateQuery, [
-        user_id,
-        trackResult.rows[0].id,
-        artist_role,
-      ]);
-      // Step 5: Insert track into `track_album` table
-      // const albumQuery = `
-      //     INSERT INTO track_album (track_id, album_id, track_order) VALUES ($1, $2, $3)
-      // `;
-
-      // Step 6: Insert track into `track_genre` table
-      const checkGenreQuery = `SELECT * FROM genres WHERE id = $1`;
-      const checkGenre = await pool.query(checkGenreQuery, [genreID]);
-      if (checkGenre.rowCount === 0) {
-        return callback({ status: 404, message: "Genre not found" });
+      //Step 4: Insert track into `track_album` table
+      const albumCheckQuery = `SELECT * FROM albums WHERE id = $1`;
+      const checkAlbum = await pool.query(albumCheckQuery, [album]);
+      if(checkAlbum.rowCount === 0){
+        return callback({ status: 404, message: "Album not found" });
       }
-      const genreQuery = `
+
+      const albumQuery = `
+          INSERT INTO track_album (track_id, album_id) VALUES ($1, $2)
+      `;
+      await pool.query(albumQuery, [trackResult.rows[0].id, album]);
+
+      // Step 5: Insert track into `track_genre` table
+      for(let i = 0; i < genre.length; i++){
+        const checkGenreQuery = `SELECT * FROM genres WHERE id = $1`;
+        const genreId = genre[i].toLowerCase();
+        const checkGenre = await pool.query(checkGenreQuery, [genreId]);
+        if (checkGenre.rowCount === 0) {
+          return callback({ status: 404, message: "Genre not found" });
+        }
+        const genreQuery = `
                 INSERT INTO track_genre (track_id, genre_id) VALUES ($1, $2)
             `;
-      await pool.query(genreQuery, [trackResult.rows[0].id, genreID]);
+        await pool.query(genreQuery, [trackResult.rows[0].id, genreId]);
+      }
+
+      // Step 6: insert track into 'user_track' table(collaborator)
+      
+      const collaborators = JSON.parse(track.collaborator);
+      let sumProfit = 0;
+      
+      for (let i = 0; i < collaborators.length; i++) {
+          sumProfit += collaborators[i].profitShare;
+          const userCheckQuery = `SELECT * FROM users WHERE username = $1`;
+          const checkCollaborator = await pool.query(userCheckQuery, [
+              collaborators[i].name,
+          ]);
+          if (checkCollaborator.rowCount === 0) {
+              return callback({ status: 404, message: "Collaborator not found" });
+          }
+          const relateQuery = `
+              INSERT INTO user_track (user_id, track_id,  artist_role, profit_share) VALUES ($1, $2, $3, $4)
+          `;
+          await pool.query(relateQuery, [
+              checkCollaborator.rows[0].id,
+              trackResult.rows[0].id,
+              'collaborator',
+              collaborators[i].profitShare
+          ]);
+      }
+      
+      const mainArtistProfit = 100 - sumProfit;
+      const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share) VALUES ($1, $2, $3, $4)`;
+      await pool.query(mainArtistQuery, [
+          user_id,
+          trackResult.rows[0].id,
+          'original artist',
+          mainArtistProfit
+      ]);
       return callback(null, {
         status: 200,
         message: "Track added successfully",
         track: trackResult.rows[0],
-        // genre: checkGenre.rows[0],
-
       });
     } catch (error) {
       console.error("Error in addTrack:", error);
