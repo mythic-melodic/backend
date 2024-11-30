@@ -179,9 +179,11 @@ const TrackModel = {
       }
 
       // Step 6: insert track into 'user_track' table(collaborator)
-      
       const collaborators = JSON.parse(track.collaborator);
       let sumProfit = 0;
+      if(collaborators.length > 0 && collaborators[0].name !== ""){
+        console.log('Collaborators:', collaborators);
+      
       
       for (let i = 0; i < collaborators.length; i++) {
           sumProfit += collaborators[i].profitShare;
@@ -202,7 +204,7 @@ const TrackModel = {
               collaborators[i].profitShare
           ]);
       }
-      
+    }
       const mainArtistProfit = 100 - sumProfit;
       const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share) VALUES ($1, $2, $3, $4)`;
       await pool.query(mainArtistQuery, [
