@@ -48,6 +48,39 @@ const TrackModel = {
       return callback(error);
     }
   },
+  getAllTracksDisabled: async (callback) => {
+    try {
+      const query = `SELECT tracks.id, tracks.title, albums.cover, tracks.status, albums.artist_id
+                      FROM tracks
+                      inner JOIN track_album AS t1 ON tracks.id = t1.track_id
+                      inner JOIN albums ON albums.id = t1.album_id
+                      WHERE tracks.status = 'disable';`;
+      //tracks.track_url IS NOT NULL AND                 
+      const result = await pool.query(query);
+      return callback(null, result.rows);
+    } catch (error) {
+      return callback(error);
+    }
+  },
+  enableTrack: async (id, callback) => {
+    try {
+      const query = `UPDATE tracks SET status = 'public' WHERE id = $1`;
+      const result = await pool.query(query, [id]);
+      return callback(null, result);
+
+    } catch (error) {
+      return callback(error);
+    }
+  },
+  disableTrack: async (id, callback) => {
+    try {
+      const query = `UPDATE tracks SET status = 'disable' WHERE id = $1`;
+      const result = await pool.query(query, [id]);
+      return callback(null, result);
+    } catch (error) {
+      return callback(error);
+    }
+  },
   deleteTrackById: async (id, callback) => {
     try {
       const check = await pool.query(`SELECT * FROM tracks WHERE id = $1`, [
