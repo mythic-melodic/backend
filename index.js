@@ -3,6 +3,7 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import route from './src/routes/index.js';
 import cors from 'cors';
+import cron from './src/cron/cronJob.js';
 dotenv.config();
 const app = express();
 app.use(cors());
