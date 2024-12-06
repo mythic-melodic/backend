@@ -32,7 +32,7 @@ class TrackController {
         const {id} = req.params;
         TrackModel.enableTrack(id, (error, result) => {
         if (error) {
-            return res.status(404).json({ message: error });
+            return res.status(404).json({ message: error , result: result});
         }
         return res.status(200).json(result);
         });

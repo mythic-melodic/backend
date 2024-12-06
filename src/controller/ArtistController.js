@@ -56,8 +56,8 @@ class ArtistController {
     async addAlbum(req, res) {
         const album = req.body;
         console.log('Album:', album);
-        // const cover = await useGoogleDriveUpload(req, res);
-        const cover = '1uPpcuN038RVhwU-IHLHSsCxG61lpCHay';
+        const cover = await useGoogleDriveUpload(req, res);
+        // const cover = '1uPpcuN038RVhwU-IHLHSsCxG61lpCHay';
         ArtistModel.addAlbum(album, cover, (error, result) => {
             if (error) {
                 return res.status(500).json({ error });

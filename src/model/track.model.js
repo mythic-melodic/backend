@@ -182,11 +182,11 @@ const TrackModel = {
       const collaborators = JSON.parse(track.collaborator);
       let sumProfit = 0;
       if(collaborators.length > 0 && collaborators[0].name !== ""){
-        console.log('Collaborators:', collaborators);
+        //console.log('Collaborators:', collaborators);
       
       
       for (let i = 0; i < collaborators.length; i++) {
-          sumProfit += collaborators[i].profitShare;
+          sumProfit += parseInt(collaborators[i].profitShare, 10);
           const userCheckQuery = `SELECT * FROM users WHERE username = $1`;
           const checkCollaborator = await pool.query(userCheckQuery, [
               collaborators[i].name,
@@ -205,10 +205,12 @@ const TrackModel = {
           ]);
       }
     }
+      //console.log(sumProfit);
       const mainArtistProfit = 100 - sumProfit;
-      // if(mainArtistProfit < 0){
-      //   return callback({ status: 400, message: "Profit share is invalid" });
-      // }
+      if(mainArtistProfit < 0){
+        return callback({ status: 400, message: "Profit share is invalid" });
+      }
+
       if(mainArtistProfit === 100){
         const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share, status) VALUES ($1, $2, $3, $4. $5)`;
         await pool.query(mainArtistQuery, [
