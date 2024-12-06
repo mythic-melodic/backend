@@ -95,13 +95,18 @@ const MerchandiseModel = {
     }
   },
 
-  deleteMerchandise: async (merchandiseId, callback) => {
+  deleteMerchandise: async (merchandiseId) => {
     try {
-      const query = `DELETE FROM merchandise WHERE id = $1`;
-      await pool.query(query, [merchandiseId]);
-      return callback(null, "Merchandise deleted");
+      const query = `DELETE FROM merchandise WHERE id = $1 RETURNING id`;
+      const result = await pool.query(query, [merchandiseId]);
+
+      if (result.rows.length === 0) {
+        throw new Error("Failed to delete merchandise, no such record found.");
+      }
+
+      return result.rows[0];
     } catch (error) {
-      return callback(error);
+      throw new Error("Failed to delete merchandise: " + error.message);
     }
   },
 };
