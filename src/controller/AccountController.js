@@ -32,9 +32,9 @@ class AccountController {
         res.status(200).send({ auth: false, token: null });
     }
     async getInfo(req, res) {
-        const {id, username} = req.body;
+        const {id, username} = req.params;
         try{
-            AccountModel.getUserByUsername(username, (error, result) => {
+            AccountModel.getUserByID(id, (error, result) => {
                 if(error){
                     res.status(500).send('Error: ' + error.message);
                 }

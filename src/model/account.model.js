@@ -64,6 +64,15 @@ const AccountModel = {
             callback(error); // Pass the error to the callback
         }
     },
+    getUserByID: async (id, callback) => {
+        const query = `SELECT * FROM users WHERE id = $1`;
+        try {
+            const result = await pool.query(query, [id]);
+            callback(null, result); // Pass the result to the callback
+        } catch (error) {
+            callback(error); // Pass the error to the callback
+        }
+    },
     getAllUsers: async (callback) => {
         const query = `SELECT * FROM users`;
         try {
