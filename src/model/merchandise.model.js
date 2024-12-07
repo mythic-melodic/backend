@@ -64,14 +64,14 @@ const MerchandiseModel = {
       case "oldest":
         orderByClause = "ORDER BY created_at ASC";
         break;
-      case "popular":
-        orderByClause = "ORDER BY sales ASC";
+      case "popularityAscending":
+        orderByClause = "ORDER BY total_sold ASC";
         break;
-      case "unpopular":
-        orderByClause = "ORDER BY sales DESC";
+      case "popularityDescending":
+        orderByClause = "ORDER BY total_sold DESC";
         break;
       default:
-        orderByClause = "ORDER BY created_at DESC"; // Default sort
+        orderByClause = "ORDER BY created_at DESC"; 
     }
   
     try {
