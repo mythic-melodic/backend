@@ -55,9 +55,13 @@ class MerchandiseController {
 
   async getAllMerchandiseByArtist(req, res) {
     const artist_id = req.params.id;
+    const { sort } = req.query;
 
     try {
-      const result = await MerchandiseModel.getAllMerchandiseByArtist(artist_id);
+      const result = await MerchandiseModel.getAllMerchandiseByArtist(
+        artist_id,
+        sort
+      );
       if (!result) {
         return res.status(404).send("No merchandise found");
       }
