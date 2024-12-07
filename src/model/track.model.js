@@ -156,6 +156,8 @@ const TrackModel = {
       const albumCheckQuery = `SELECT * FROM albums WHERE id = $1`;
       const checkAlbum = await pool.query(albumCheckQuery, [album]);
       if(checkAlbum.rowCount === 0){
+        const deleteTrackQuery = `DELETE FROM tracks WHERE id = $1`;
+        await pool.query(deleteTrackQuery, [trackResult.rows[0].id]);
         return callback({ status: 404, message: "Album not found" });
       }
 
@@ -170,6 +172,10 @@ const TrackModel = {
         const genreId = genre[i].toLowerCase();
         const checkGenre = await pool.query(checkGenreQuery, [genreId]);
         if (checkGenre.rowCount === 0) {
+          const deleteTrackQuery = `DELETE FROM tracks WHERE id = $1`;
+          await pool.query(deleteTrackQuery, [trackResult.rows[0].id]);
+          const deleteAlbumQuery = `DELETE FROM track_album WHERE track_id = $1`;
+          await pool.query(deleteAlbumQuery, [trackResult.rows[0].id]);
           return callback({ status: 404, message: "Genre not found" });
         }
         const genreQuery = `
@@ -192,6 +198,13 @@ const TrackModel = {
               collaborators[i].name,
           ]);
           if (checkCollaborator.rowCount === 0) {
+
+              const deleteTrackQuery = `DELETE FROM tracks WHERE id = $1`;
+              await pool.query(deleteTrackQuery, [trackResult.rows[0].id]);
+              const deleteAlbumQuery = `DELETE FROM track_album WHERE track_id = $1`;
+              await pool.query(deleteAlbumQuery, [trackResult.rows[0].id]);
+              const deleteGenreQuery = `DELETE FROM track_genre WHERE track_id = $1`;
+              await pool.query(deleteGenreQuery, [trackResult.rows[0].id]);
               return callback({ status: 404, message: "Collaborator not found" });
           }
           const relateQuery = `

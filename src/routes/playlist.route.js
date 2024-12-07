@@ -3,7 +3,6 @@ const router = express.Router();
 import playlistController from '../controller/PlaylistController.js';
 import tokenMiddleware from '../middlewares/token.middleware.js';
 
-console.log(tokenMiddleware);
 
 router.post('/create', tokenMiddleware.authenticateToken, playlistController.createPlaylist);
 router.get('/all', playlistController.getAllPlaylists);
@@ -14,8 +13,8 @@ router.post('/:id/track', tokenMiddleware.authenticateToken, playlistController.
 router.delete('/:id/track', tokenMiddleware.authenticateToken, playlistController.deleteTrackFromPlaylist);
 // router.patch('/:id/order', tokenMiddleware.authenticateToken, playlistController.changeTrackOrder);
 
-router.delete('/delete/:id',  playlistController.deletePlaylist);
-router.put('/update/:id', tokenMiddleware.authenticateToken, playlistController.updatePlaylist);
+router.delete('/:id',  playlistController.deletePlaylist);
+router.put('/:id', tokenMiddleware.authenticateToken, playlistController.updatePlaylist);
 router.get('/:id', tokenMiddleware.authenticateToken, playlistController.getPlaylistById);
 
 export default router;
