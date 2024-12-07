@@ -70,13 +70,26 @@ const MerchandiseModel = {
       case "popularityDescending":
         orderByClause = "ORDER BY total_sold DESC";
         break;
+      case "priceAscending":
+        orderByClause = "ORDER BY price ASC";
+        break;
+      case "priceDescending":
+        orderByClause = "ORDER BY price DESC";
+        break;
+      case "stockAscending":
+        orderByClause = "ORDER BY stock ASC";
+        break;
+      case "stockDescending":
+        orderByClause = "ORDER BY stock DESC";
+        break;
+
       default:
-        orderByClause = "ORDER BY created_at DESC"; 
+        orderByClause = "ORDER BY created_at DESC";
     }
-  
+
     try {
       const query = `
-        SELECT m.id, m.name as name, m.price as price, m.image as image, COALESCE(SUM(om.quantity), 0) as total_sold
+        SELECT m.id, m.name as name, m.price as price, m.image as image, m.stock as stock, COALESCE(SUM(om.quantity), 0) as total_sold
         FROM merchandise m
         LEFT JOIN order_merchandise om ON m.id = om.merchandise_id
         WHERE m.artist_id = $1
@@ -89,7 +102,7 @@ const MerchandiseModel = {
       throw new Error("Database query failed: " + error.message);
     }
   },
-  
+
   updateMerchandise: async (
     merchandiseId,
     name,

@@ -1,7 +1,7 @@
 import MerchandiseModel from "../model/merchandise.model.js";
 
 class MerchandiseController {
-  async getAllMerchandise(req, res) {
+  async getAllMerchandise(res) {
     try {
       MerchandiseModel.getAllMerchandise((error, result) => {
         if (error) {
@@ -75,7 +75,6 @@ class MerchandiseController {
     const merchandise_id = req.params.id;
     const artist_id = req.user.id;
     const { name, album_id, stock, price, image, description } = req.body;
-    console.log("artist_id", artist_id);
 
     try {
       const existingMerchandise = await MerchandiseModel.getMerchandiseById(
