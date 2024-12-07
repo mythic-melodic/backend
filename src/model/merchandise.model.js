@@ -55,16 +55,41 @@ const MerchandiseModel = {
     }
   },
 
-  getAllMerchandiseByArtist: async (artistId) => {
+  getAllMerchandiseByArtist: async (artistId, sort) => {
+    let orderByClause;
+    switch (sort) {
+      case "newest":
+        orderByClause = "ORDER BY created_at DESC";
+        break;
+      case "oldest":
+        orderByClause = "ORDER BY created_at ASC";
+        break;
+      case "popular":
+        orderByClause = "ORDER BY sales ASC";
+        break;
+      case "unpopular":
+        orderByClause = "ORDER BY sales DESC";
+        break;
+      default:
+        orderByClause = "ORDER BY created_at DESC"; // Default sort
+    }
+  
     try {
-      const query = `SELECT * FROM merchandise WHERE artist_id = $1`;
+      const query = `
+        SELECT m.id, m.name as name, m.price as price, m.image as image, COALESCE(SUM(om.quantity), 0) as total_sold
+        FROM merchandise m
+        LEFT JOIN order_merchandise om ON m.id = om.merchandise_id
+        WHERE m.artist_id = $1
+        GROUP BY m.id
+        ${orderByClause};
+      `;
       const result = await pool.query(query, [artistId]);
       return result.rows;
     } catch (error) {
       throw new Error("Database query failed: " + error.message);
     }
   },
-
+  
   updateMerchandise: async (
     merchandiseId,
     name,
