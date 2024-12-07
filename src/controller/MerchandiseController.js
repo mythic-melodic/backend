@@ -1,17 +1,14 @@
 import MerchandiseModel from "../model/merchandise.model.js";
 
 class MerchandiseController {
-  async getAllMerchandise(res) {
+  async getAllMerchandise(req, res) {
     try {
-      MerchandiseModel.getAllMerchandise((error, result) => {
-        if (error) {
-          return res.status(400).send("Error: " + error.message);
-        }
-        if (!result || !result.rows) {
-          return res.status(404).send("No merchandise found");
-        }
-        res.status(200).send(result.rows);
-      });
+      const result = await MerchandiseModel.getAllMerchandise();
+
+      if (!result) {
+        return res.status(404).send("No merchandise found");
+      }
+      res.status(200).send(result);
     } catch (error) {
       res.status(500).send("Error: " + error.message);
     }
@@ -133,6 +130,29 @@ class MerchandiseController {
       });
     } catch (error) {
       res.status(500).json({ message: "Error: " + error.message });
+    }
+  }
+
+  async getNewArrivals(req, res) {
+    try {
+      // Gọi hàm từ model để lấy danh sách sản phẩm mới
+      const data = await MerchandiseModel.getNewArrivals();
+
+      // Thành công, trả về danh sách
+      return res.status(200).json({
+        success: true,
+        message: "New arrivals fetched successfully.",
+        data: data,
+      });
+    } catch (error) {
+      console.error("Error fetching new arrivals:", error);
+
+      // Xử lý lỗi, trả về mã trạng thái 500
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch new arrivals.",
+        error: error.message,
+      });
     }
   }
 }

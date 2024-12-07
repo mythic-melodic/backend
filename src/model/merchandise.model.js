@@ -147,6 +147,18 @@ const MerchandiseModel = {
       throw new Error("Failed to delete merchandise: " + error.message);
     }
   },
+  getNewArrivals: async () => {
+    try {
+      const query = `
+            SELECT * FROM merchandise WHERE created_at >= NOW() - INTERVAL '7 DAYS'`;
+      const result = await pool.query(query);
+      return result.rows;
+    } catch (error) {
+      throw new Error(
+        "Failer to get new arrival merchandises: " + error.message
+      );
+    }
+  },
 };
 
 export default MerchandiseModel;
