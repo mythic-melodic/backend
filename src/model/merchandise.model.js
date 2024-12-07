@@ -32,13 +32,13 @@ const MerchandiseModel = {
     }
   },
 
-  getAllMerchandise: async (callback) => {
+  getAllMerchandise: async () => {
     try {
       const query = `SELECT * FROM merchandise`;
       const result = await pool.query(query);
-      return callback(null, result);
+      return result.rows;
     } catch (error) {
-      return callback(error);
+      throw new Error("Failed to get all merchandise: " + error.message);
     }
   },
 
@@ -55,13 +55,13 @@ const MerchandiseModel = {
     }
   },
 
-  getAllMerchandiseByArtist: async (artistId, callback) => {
+  getAllMerchandiseByArtist: async (artistId) => {
     try {
       const query = `SELECT * FROM merchandise WHERE artist_id = $1`;
       const result = await pool.query(query, [artistId]);
-      return callback(null, result);
+      return result.rows;
     } catch (error) {
-      return callback(error);
+      throw new Error("Database query failed: " + error.message);
     }
   },
 

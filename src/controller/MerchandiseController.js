@@ -57,12 +57,11 @@ class MerchandiseController {
     const artist_id = req.params.id;
 
     try {
-      MerchandiseModel.getAllMerchandiseByArtist(artist_id, (error, result) => {
-        if (error) {
-          res.status(400).send("Error: " + error.message);
-        }
-        res.status(200).send(result.rows);
-      });
+      const result = await MerchandiseModel.getAllMerchandiseByArtist(artist_id);
+      if (!result) {
+        return res.status(404).send("No merchandise found");
+      }
+      res.status(200).send(result);
     } catch (error) {
       res.status(500).send("Error: " + error.message);
     }
