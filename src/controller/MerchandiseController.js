@@ -15,7 +15,8 @@ class MerchandiseController {
   }
 
   async createMerchandise(req, res) {
-    const { name, album_id, stock, price, image, description } = req.body;
+    const { name, album_id, stock, price, image, description, category } =
+      req.body;
     const artist_id = req.user.id;
 
     try {
@@ -26,7 +27,8 @@ class MerchandiseController {
         stock,
         price,
         image,
-        description
+        description,
+        category
       );
       res.status(201).json({
         message: "Merchandise created successfully",
@@ -71,7 +73,7 @@ class MerchandiseController {
   async updateMerchandise(req, res) {
     const merchandise_id = req.params.id;
     const artist_id = req.user.id;
-    const { name, album_id, stock, price, image, description } = req.body;
+    const { name, album_id, stock, price, image, description, category } = req.body;
 
     try {
       const existingMerchandise = await MerchandiseModel.getMerchandiseById(
@@ -94,7 +96,8 @@ class MerchandiseController {
         stock,
         price,
         image,
-        description
+        description,
+        category
       );
       res.status(200).json({
         message: "Merchandise updated successfully",
