@@ -9,7 +9,7 @@ router.get('/all', playlistController.getAllPlaylists);
 router.get('/creator', tokenMiddleware.authenticateToken, playlistController.getAllPlaylistsByCreator);
 
 router.get('/:id/tracks', tokenMiddleware.authenticateToken, playlistController.getAllTracksInPlaylist);
-router.post('/:id/track', tokenMiddleware.authenticateToken, playlistController.addTrackToPlaylist);
+router.post('/track', tokenMiddleware.authenticateToken, playlistController.addTrackToPlaylist);
 router.delete('/:id/track', tokenMiddleware.authenticateToken, playlistController.deleteTrackFromPlaylist);
 // router.patch('/:id/order', tokenMiddleware.authenticateToken, playlistController.changeTrackOrder);
 

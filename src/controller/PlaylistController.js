@@ -117,8 +117,7 @@ class PlaylistController {
     }
 
     async addTrackToPlaylist(req, res) {
-        const playlist_id = req.params.id;
-        const { track_id } = req.body;
+        const { track_id, playlist_id } = req.body;
         try {
             PlayListModel.addTrackToPlaylist(playlist_id, track_id, (error, result) => {
                 if (error) {
