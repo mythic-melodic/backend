@@ -30,21 +30,76 @@ const ArtistModel = {
     }
     ,
     getTopTracks: async (artistId, callback) => {
-    const query = `SELECT tracks.id AS track_id, tracks.title AS title, COUNT(plays.track_id) AS play_count 
-        FROM plays_user_track AS plays
-        INNER JOIN tracks ON tracks.id = plays.track_id
-        INNER JOIN uploads_user_track AS uploads ON uploads.track_id = tracks.id
-        INNER JOIN users ON users.id = uploads.user_id
-        WHERE users.id = $1
-        GROUP BY tracks.id
-        ORDER BY play_count DESC`;
+  
     try {
-        const result = await pool.query(query, [artistId]);
-        callback(null, result);
+        const query = `SELECT tracks.id AS track_id, tracks.title AS title, tracks.track_url, albums.cover as cover  , COUNT(plays.track_id) AS play_count 
+                        FROM plays_user_track AS plays
+                        INNER JOIN tracks ON tracks.id = plays.track_id
+                        INNER JOIN user_track AS uploads ON uploads.track_id = tracks.id
+                        INNER JOIN users ON users.id = uploads.user_id
+                        inner join track_album on track_album.track_id = tracks.id
+                        inner join albums on albums.id = track_album.album_id
+                        WHERE users.id = $1 
+                        GROUP BY tracks.id, albums.id
+                        ORDER BY play_count DESC`;
+        const trackResult = await pool.query(query, [artistId]);
+        // console.log(trackResult.rows);
+        const artistQuery = `SELECT users.display_name FROM user_track
+            INNER JOIN users ON user_track.user_id = users.id 
+            WHERE user_track.track_id = $1`;
+        
+        // console.log(artistResult.rows);
+        if(trackResult.rows.length === 0) {
+        return callback({ message: 'No tracks found' });
+        }
+        const results = await Promise.all(trackResult.rows.map(async (track) => {
+          const artistResult = await pool.query(artistQuery, [track.track_id]);
+          return {
+            id: track.track_id,
+            title: track.title,
+            track_url: track.track_url,
+            cover: track.cover,
+            artists: artistResult.rows.map((row) => row.display_name), // Assuming multiple artists
+          };
+        }));
+        
+        // console.log(results);
+        
+        // console.log(results);
+        // console.log(result);
+        callback(null, results);
         } catch (error) {
         callback(error);
         }
     },
+    getLastestTracks: async (artistId, callback) => {
+        const query = `SELECT tracks.id as id, tracks.title as title, tracks.release_date, track_url,
+                        artist_role, albums.cover as cover
+                        FROM tracks
+                        inner join track_album on tracks.id = track_album.track_id
+                        inner join albums on track_album.album_id = albums.id
+                        inner join user_track on tracks.id = user_track.track_id
+                        WHERE user_track.user_id = $1 and tracks.status = 'public' ORDER BY tracks.release_date DESC LIMIT 1`;
+        try {
+            const trackResult = await pool.query(query, [artistId]);
+            const artistQuery = `SELECT users.display_name FROM user_track
+            INNER JOIN users ON user_track.user_id = users.id 
+            WHERE user_track.track_id = $1`;
+            const artistResult = await pool.query(artistQuery, [trackResult.rows[0].id]);
+            const result = {
+                id: trackResult.rows[0]?.id,
+                title: trackResult.rows[0]?.title,
+                track_url: trackResult.rows[0]?.track_url,
+                cover: trackResult.rows[0]?.cover,
+                release_date: trackResult.rows[0]?.release_date,
+                artists: artistResult.rows.map((row) => row.display_name), // Assuming multiple artists
+            }
+            callback(null, result);
+        } catch (error) {
+            return callback(error);
+        }
+    }
+    ,
     addAlbum: async (album, cover, callback) => {
         const { title, release_date, description, album_type, artist_id } = album;
         try {
