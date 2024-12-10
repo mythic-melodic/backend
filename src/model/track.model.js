@@ -21,17 +21,21 @@ const TrackModel = {
 
       const genreQuery = `SELECT genre_id FROM track_genre WHERE track_id = $1`;
       const genreResult = await pool.query(genreQuery, [id]);
-
-      const artistQuery = `SELECT users.display_name FROM user_track
-                            INNER JOIN users ON user_track.user_id = users.id 
-                            WHERE user_track.track_id = $1`;
+      const artistQuery = `SELECT users.display_name, users.username, users.id FROM user_track
+      INNER JOIN users ON user_track.user_id = users.id 
+      WHERE user_track.track_id = $1`;
       const artistResult = await pool.query(artistQuery, [id]);
 
       const result = {
         track: trackResult.rows[0],
         genre: genreResult.rows.map((row) => row.genre_id), // Assuming multiple genres
-        artist: artistResult.rows.map((row) => row.display_name), // Assuming multiple artists
+        artists: artistResult.rows.map((row) => ({
+          display_name: row.display_name,
+          username: row.username,
+          id: row.id,
+        })), // Assuming multiple artists
       };
+      // console.log(result);
       const trackInfo = {
         id: result.track.id,
         title: result.track.title,
@@ -41,7 +45,7 @@ const TrackModel = {
         language: result.track.language,
         track_url: result.track.track_url,
         genres: result.genre.length > 0 ? result.genre : null, // If genres exist, include them, else null
-        artists: result.artist.length > 0 ? result.artist : null, // If artists exist, include them, else null
+        artists: result.artists.length > 0 ? result.artists : null, // If artists exist, include them, else null
       };
       return callback(null, trackInfo);
     } catch (error) {
