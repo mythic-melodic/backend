@@ -51,15 +51,28 @@ const PlayListModel = {
     }
   },
 
-  updatePlaylist: async (playlist_id, name, description, callback) => {
+  updatePlaylist: async (playlist_id, name, description, cover, callback) => {
     try {
-      const query = `UPDATE playlists SET name = $1, description = $2, date_modified = NOW() WHERE id = $3`;
-      await pool.query(query, [name, description, playlist_id]);
-      return callback(null, "Playlist updated");
+      const query = `
+        UPDATE playlists
+        SET name = $1, description = $2, cover = $3, date_modified = NOW()
+        WHERE id = $4
+        RETURNING id, name, description, cover, date_modified;
+      `;
+      const result = await pool.query(query, [name, description, cover, playlist_id]);
+  
+      // Kiểm tra nếu không có bản ghi nào được cập nhật
+      if (result.rows.length === 0) {
+        return callback(new Error("Playlist not found"));
+      }
+  
+      // Trả về thông tin của playlist vừa được cập nhật
+      return callback(null, result.rows[0]);
     } catch (error) {
       return callback(error);
     }
   },
+  
 
   deletePlaylist: async (playlist_id, callback) => {
     try {

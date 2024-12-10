@@ -15,7 +15,7 @@ router.delete('/:id/track', tokenMiddleware.authenticateToken, playlistControlle
 // router.patch('/:id/order', tokenMiddleware.authenticateToken, playlistController.changeTrackOrder);
 
 router.delete('/:id',  playlistController.deletePlaylist);
-router.put('/:id', tokenMiddleware.authenticateToken, playlistController.updatePlaylist);
+router.put('/:id',upload.single('cover'), tokenMiddleware.authenticateToken, playlistController.updatePlaylist);
 router.get('/:id', tokenMiddleware.authenticateToken, playlistController.getPlaylistById);
 
 export default router;
