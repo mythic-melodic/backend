@@ -1,15 +1,15 @@
 import pool from "../config/db.connect.js";
 
 const PlayListModel = {
-  createPlayList: async (name, creator_id, description, callback) => {
+  createPlayList: async (name, creator_id, cover, description, callback) => {
     try {
       const query = `
-                INSERT INTO playlists (name, creator_id, description, date_created, date_modified) 
-                VALUES ($1, $2, $3, NOW(), NOW())
+                INSERT INTO playlists (name, creator_id, cover, description, date_created, date_modified) 
+                VALUES ($1, $2, $3, $4, NOW(), NOW())
                 RETURNING id
             `;
 
-      const result = await pool.query(query, [name, creator_id, description]);
+      const result = await pool.query(query, [name, creator_id, cover, description]);
       const playlist_id = result.rows[0].id;
 
       return callback(null,  { message: "Playlist created", playlist_id: playlist_id });

@@ -1,15 +1,17 @@
 import PlayListModel from "../model/playlist.model.js";
+import useGoogleDriveUpload from '../hooks/upload.media.js';
 
 class PlaylistController {
     async createPlaylist(req, res) {
         const { name, description } = req.body;
         const creator_id = req.user.id;
+        const cover = await useGoogleDriveUpload(req, res);
         try {
-            PlayListModel.createPlayList(name, creator_id, description, (error, result) => {
+            PlayListModel.createPlayList(name, creator_id, cover, description, (error, result) => {
                 if (error) {
                     res.status(400).send(error);
                 }
-                res.status(200).send({'message': result.message, 'playlist_id': result.playlist_id});
+                res.status(200).send({'message': result.message, 'playlist_id': result.playlist_id, 'cover': cover});
             });
         } catch (error) {
             res.status(500).send("Error: " + error.message);
