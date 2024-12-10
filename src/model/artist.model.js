@@ -44,7 +44,7 @@ const ArtistModel = {
                         ORDER BY play_count DESC`;
         const trackResult = await pool.query(query, [artistId]);
         // console.log(trackResult.rows);
-        const artistQuery = `SELECT users.display_name FROM user_track
+        const artistQuery = `SELECT users.display_name, users.username, users.id FROM user_track
             INNER JOIN users ON user_track.user_id = users.id 
             WHERE user_track.track_id = $1`;
         
@@ -59,7 +59,11 @@ const ArtistModel = {
             title: track.title,
             track_url: track.track_url,
             cover: track.cover,
-            artists: artistResult.rows.map((row) => row.display_name), // Assuming multiple artists
+            artists: artistResult.rows.map((row) => ({
+                id: row.id,
+                display_name: row.display_name,
+                username: row.username
+              })), // Assuming multiple artists
           };
         }));
         
