@@ -18,10 +18,6 @@ class MerchandiseController {
   async createMerchandise(req, res) {
     const { name, album_id, stock, price, description, category } = req.body;
     const artist_id = req.user.id;
-    if (!name || !album_id || !stock || !price || !description || !category) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
     try {
       const image = await useGoogleDriveUpload(req, res);
       const result = await MerchandiseModel.createMerchandise(
@@ -103,7 +99,7 @@ class MerchandiseController {
         description
       );
       res.status(200).json({
-        message: "Merchandise updated successfully",
+        message: "Merchandise updated successfully.",
         updatedMerchandise,
       });
     } catch (error) {

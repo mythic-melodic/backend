@@ -13,7 +13,7 @@ const MerchandiseModel = {
   ) => {
     try {
       const query = `
-      INSERT INTO merchandise (name, artist_id, album_id, stock, price, image, description, created_at)
+      INSERT INTO merchandise (name, artist_id, album_id, stock, price, image, description, category, created_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP) RETURNING id;
     `;
 
