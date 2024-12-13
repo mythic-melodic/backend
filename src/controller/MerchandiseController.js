@@ -1,4 +1,5 @@
 import MerchandiseModel from "../model/merchandise.model.js";
+import useGoogleDriveUpload from "../hooks/upload.media.js";
 
 class MerchandiseController {
   async getAllMerchandise(req, res) {
@@ -15,11 +16,14 @@ class MerchandiseController {
   }
 
   async createMerchandise(req, res) {
-    const { name, album_id, stock, price, image, description, category } =
-      req.body;
+    const { name, album_id, stock, price, description, category } = req.body;
     const artist_id = req.user.id;
+    if (!name || !album_id || !stock || !price || !description || !category) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
 
     try {
+      const image = await useGoogleDriveUpload(req, res);
       const result = await MerchandiseModel.createMerchandise(
         name,
         artist_id,
@@ -73,7 +77,7 @@ class MerchandiseController {
   async updateMerchandise(req, res) {
     const merchandise_id = req.params.id;
     const artist_id = req.user.id;
-    const { name, album_id, stock, price, image, description, category } = req.body;
+    const { name, album_id, stock, price, image, description } = req.body;
 
     try {
       const existingMerchandise = await MerchandiseModel.getMerchandiseById(
@@ -96,8 +100,7 @@ class MerchandiseController {
         stock,
         price,
         image,
-        description,
-        category
+        description
       );
       res.status(200).json({
         message: "Merchandise updated successfully",
