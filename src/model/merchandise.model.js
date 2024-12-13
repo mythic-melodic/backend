@@ -144,10 +144,7 @@ const MerchandiseModel = {
         throw new Error("Failed to delete merchandise, no such record found.");
       }
 
-      return {
-        message: "Merchandise deleted",
-        merchandise_id: result.rows[0].id,
-      };
+      return result.rows[0];
     } catch (error) {
       throw new Error("Failed to delete merchandise: " + error.message);
     }

@@ -9,9 +9,9 @@ class MerchandiseController {
       if (!result) {
         return res.status(404).send("No merchandise found");
       }
-      res.status(200).send(result);
+      return res.status(200).send(result);
     } catch (error) {
-      res.status(500).send("Error: " + error.message);
+      return res.status(500).send("Error: " + error.message);
     }
   }
 
@@ -30,12 +30,12 @@ class MerchandiseController {
         description,
         category
       );
-      res.status(201).json({
+      return res.status(201).json({
         message: "Merchandise created successfully",
         merchandise_id: result.merchandise_id,
       });
     } catch (error) {
-      res.status(500).json({ message: "Error: " + error.message });
+      return res.status(500).json({ message: "Error: " + error.message });
     }
   }
 
@@ -46,9 +46,9 @@ class MerchandiseController {
       if (!result) {
         return res.status(404).send("No merchandise found");
       }
-      res.status(200).send(result);
+      return res.status(200).send(result);
     } catch (error) {
-      res.status(500).send("Error: " + error.message);
+      return res.status(500).send("Error: " + error.message);
     }
   }
 
@@ -64,9 +64,9 @@ class MerchandiseController {
       if (!result) {
         return res.status(404).send("No merchandise found");
       }
-      res.status(200).send(result);
+      return res.status(200).send(result);
     } catch (error) {
-      res.status(500).send("Error: " + error.message);
+      return res.status(500).send("Error: " + error.message);
     }
   }
 
@@ -98,12 +98,12 @@ class MerchandiseController {
         image,
         description
       );
-      res.status(200).json({
+      return res.status(200).json({
         message: "Merchandise updated successfully.",
         updatedMerchandise,
       });
     } catch (error) {
-      res.status(500).json({ message: "Error: " + error.message });
+      return res.status(500).json({ message: "Error: " + error.message });
     }
   }
 
@@ -125,13 +125,15 @@ class MerchandiseController {
         });
       }
 
-      await MerchandiseModel.deleteMerchandise(merchandise_id);
-      res.status(200).json({
+      const deletedMerchandise = await MerchandiseModel.deleteMerchandise(
+        merchandise_id
+      );
+      return res.status(200).json({
         message: "Merchandise deleted successfully",
-        deleteMerchandise: existingMerchandise,
+        deleteMerchandise: deletedMerchandise,
       });
     } catch (error) {
-      res.status(500).json({ message: "Error: " + error.message });
+      return res.status(500).json({ message: "Error: " + error.message });
     }
   }
 
