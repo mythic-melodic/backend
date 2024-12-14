@@ -218,53 +218,66 @@ const MusicModel = {
   getNewReleases: async (callback) => {
     try {
       const query = `
-            WITH track_info AS (
-            SELECT 
-                t.id, 
-                t.title, 
-                t.lyrics, 
-                t.release_date, 
-                t.duration, 
-                t.language, 
-                t.track_url,
-                a.cover AS cover
-            FROM tracks t
-            LEFT JOIN track_album ta ON t.id = ta.track_id
-            LEFT JOIN albums a ON ta.album_id = a.id
-            ),
-            genres AS (
-            SELECT 
-                tg.track_id,
-                tg.genre_id
-            FROM track_genre tg
-            ),
-            artists AS (
-            SELECT 
-                ut.track_id,
-                u.display_name
-            FROM user_track ut
-            INNER JOIN users u ON ut.user_id = u.id
-            )
-            SELECT 
-            t.id,
-            t.title,
-            t.lyrics,
-            t.release_date,
-            t.duration,
-            t.language,
-            t.track_url,
-            t.cover,
-            COALESCE(array_agg(DISTINCT g.genre_id) FILTER (WHERE g.genre_id IS NOT NULL), '{}') AS genres,
-            COALESCE(array_agg(DISTINCT a.display_name) FILTER (WHERE a.display_name IS NOT NULL), '{}') AS artists
-            FROM 
-            track_info t
-            LEFT JOIN genres g ON t.id = g.track_id
-            LEFT JOIN artists a ON t.id = a.track_id
-            GROUP BY 
-            t.id, t.title, t.lyrics, t.release_date, t.duration, t.language, t.track_url, t.cover
-            ORDER BY 
-            t.release_date DESC
-            LIMIT 8;
+                    WITH track_info AS (
+              SELECT 
+                  t.id, 
+                  t.title, 
+                  t.lyrics, 
+                  t.release_date, 
+                  t.duration, 
+                  t.language, 
+                  t.track_url,
+                  a.cover AS cover
+              FROM tracks t
+              LEFT JOIN track_album ta ON t.id = ta.track_id
+              LEFT JOIN albums a ON ta.album_id = a.id
+          ),
+          genres AS (
+              SELECT 
+                  tg.track_id,
+                  tg.genre_id
+              FROM track_genre tg
+          ),
+          artists AS (
+              SELECT 
+                  DISTINCT ut.track_id,
+                  u.display_name,
+                  u.id AS artist_id
+              FROM user_track ut
+              INNER JOIN users u ON ut.user_id = u.id
+          )
+          SELECT 
+              t.id,
+              t.title,
+              t.lyrics,
+              t.release_date,
+              t.duration,
+              t.language,
+              t.track_url,
+              t.cover,
+              COALESCE(array_agg(DISTINCT g.genre_id) FILTER (WHERE g.genre_id IS NOT NULL), '{}') AS genres,
+              COALESCE(
+                  json_agg(
+                      json_build_object('id', a.artist_id, 'name', a.display_name)
+                  ) 
+                  FILTER (WHERE a.artist_id IS NOT NULL), 
+                  '[]'
+              ) AS artists
+          FROM 
+              track_info t
+          LEFT JOIN genres g ON t.id = g.track_id
+          LEFT JOIN (
+              SELECT 
+                  DISTINCT track_id, 
+                  artist_id, 
+                  display_name
+              FROM artists
+          ) a ON t.id = a.track_id
+          GROUP BY 
+              t.id, t.title, t.lyrics, t.release_date, t.duration, t.language, t.track_url, t.cover
+          ORDER BY 
+              t.release_date DESC
+          LIMIT 8;
             `;
       const result = await pool.query(query);
       return callback(null, result.rows);
@@ -276,28 +289,26 @@ const MusicModel = {
   getTopAlbums: async (callback) => {
     try {
       const query = `
-            WITH album_plays AS (
-    SELECT 
-        ta.album_id, 
-        COUNT(put.track_id) AS total_plays
-    FROM track_album ta
-    INNER JOIN plays_user_track put ON ta.track_id = put.track_id
-    GROUP BY ta.album_id
-)
-SELECT 
-    a.id AS id,
-    a.title AS title,
-    a.cover AS cover,
-    ap.total_plays,
-    u.id AS artist_id,
-    u.display_name AS artists
-FROM albums a
-INNER JOIN album_plays ap ON a.id = ap.album_id
-INNER JOIN users u ON a.artist_id = u.id
-ORDER BY ap.total_plays DESC
-LIMIT 10;
-
-
+                        WITH album_plays AS (
+                SELECT 
+                    ta.album_id, 
+                    COUNT(put.track_id) AS total_plays
+                FROM track_album ta
+                INNER JOIN plays_user_track put ON ta.track_id = put.track_id
+                GROUP BY ta.album_id
+            )
+            SELECT 
+                a.id AS id,
+                a.title AS title,
+                a.cover AS cover,
+                ap.total_plays,
+                u.id AS artist_id,
+                u.display_name AS artists
+            FROM albums a
+            INNER JOIN album_plays ap ON a.id = ap.album_id
+            INNER JOIN users u ON a.artist_id = u.id
+            ORDER BY ap.total_plays DESC
+            LIMIT 10;
             `;
       const result = await pool.query(query);
       return callback(null, result.rows);
@@ -320,7 +331,8 @@ LIMIT 10;
             SELECT 
             u.id AS artist_id,
             u.display_name AS artist_name,
-            ap.total_plays
+            ap.total_plays,
+            u.avatar as avatar
             FROM users u
             INNER JOIN artist_plays ap ON u.id = ap.artist_id
             ORDER BY ap.total_plays DESC

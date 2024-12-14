@@ -27,7 +27,8 @@ const SearchModel = {
                 artists AS (
                     SELECT 
                         ut.track_id,
-                        u.display_name
+                        u.display_name,
+                        u.id AS artist_id
                     FROM user_track ut
                     INNER JOIN users u ON ut.user_id = u.id
                 )
@@ -41,7 +42,13 @@ const SearchModel = {
                     t.track_url,
                     t.cover,
                     COALESCE(array_agg(DISTINCT g.genre_id) FILTER (WHERE g.genre_id IS NOT NULL), '{}') AS genres,
-                    COALESCE(array_agg(DISTINCT a.display_name) FILTER (WHERE a.display_name IS NOT NULL), '{}') AS artists
+                    COALESCE(
+                  json_agg(
+                      json_build_object('id', a.artist_id, 'name', a.display_name)
+                  ) 
+                  FILTER (WHERE a.artist_id IS NOT NULL), 
+                  '[]'
+              ) AS artists
                 FROM 
                     track_info t
                 LEFT JOIN genres g ON t.id = g.track_id
@@ -60,7 +67,7 @@ const SearchModel = {
                         ELSE 4
                     END,
                     t.release_date DESC
-                LIMIT 10;
+                LIMIT 12;
             `;
             const result = await pool.query(query, [`%${search_query}%`]);
             return result.rows; // Trả về dữ liệu từ query
@@ -96,6 +103,67 @@ const SearchModel = {
         return result.rows;
         } catch (error) {
         return error;
+        }
+    },
+
+    browseByGenre: async (genre_id, limit, offset) => {
+        try {
+        const query = `
+           WITH track_info AS (
+                SELECT 
+                    t.id, 
+                    t.title, 
+                    t.duration, 
+					t.release_date,
+                    a.cover AS cover
+                FROM tracks t
+                LEFT JOIN track_album ta ON t.id = ta.track_id
+                LEFT JOIN albums a ON ta.album_id = a.id
+            ),
+            genres AS (
+                SELECT 
+                    tg.track_id,
+                    tg.genre_id
+                FROM track_genre tg
+            ),
+            artists AS (
+                SELECT 
+                    ut.track_id,
+                    u.display_name,
+                    u.id AS artist_id
+                FROM user_track ut
+                INNER JOIN users u ON ut.user_id = u.id
+            )
+            SELECT 
+                t.id,
+                t.title,
+                t.duration,
+                t.cover,
+				t.release_date,
+                COALESCE(array_agg(DISTINCT g.genre_id) FILTER (WHERE g.genre_id IS NOT NULL), '{}') AS genres,
+                 COALESCE(
+                  json_agg(
+                      json_build_object('id', a.artist_id, 'name', a.display_name)
+                  ) 
+                  FILTER (WHERE a.artist_id IS NOT NULL), 
+                  '[]'
+              ) AS artists        
+                  FROM 
+                track_info t
+            LEFT JOIN genres g ON t.id = g.track_id
+            LEFT JOIN artists a ON t.id = a.track_id
+            WHERE 
+                g.genre_id = $1
+            GROUP BY 
+                t.id, t.title, t.release_date, t.duration, t.cover
+            ORDER BY 
+                t.release_date DESC
+                LIMIT $2 OFFSET $3;
+        `;
+        const result = await pool.query(query, [genre_id, limit, offset]);
+        return result.rows;
+        } catch (error) {
+        throw error;
         }
     },
 

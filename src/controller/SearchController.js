@@ -31,6 +31,19 @@ class SearchController {
         }
     }
 
+    async browseByGenre(req, res) {
+        const genre_id = req.query.genre_id;
+        const page = parseInt(req.query.page) || 1; // Mặc định page = 1 nếu không truyền
+        const limit = parseInt(req.query.limit) || 10; // Mặc định limit = 10 nếu không truyền
+        const offset = (page - 1) * limit; // Tính toán offset
+        try {
+            const tracks = await PlayListModel.browseByGenre(genre_id, limit, offset);
+            return res.status(200).json(tracks);
+        } catch (error) {
+            return res.status(500).json({ message: error.message });
+        }
+    }
+
 }
 
 export default new SearchController();
