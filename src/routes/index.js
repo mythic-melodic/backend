@@ -8,6 +8,7 @@ import musicRoute from "./music.route.js";
 import favoriteRoute from "./favorite.route.js";
 import libraryRoute from "./library.route.js";
 import SearchRoute from "./search.route.js";
+import AlbumRoute from "./album.route.js";
 
 function route(app) {
     app.use('/api/v1/account', accountRoute);
@@ -19,6 +20,7 @@ function route(app) {
     app.use('/api/v1/favorite', favoriteRoute);
     app.use('/api/v1/library', libraryRoute);
     app.use('/api/v1/search', SearchRoute);
+    app.use('/api/v1/album', AlbumRoute);
 }
 
 
