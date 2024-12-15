@@ -8,7 +8,7 @@ const upload = multer({ dest: "uploads/" });
 router.get("/", merchandiseController.getAllMerchandise);
 router.get("/new-arrivals", merchandiseController.getNewArrivals);
 router.post("/", tokenMiddleware.authenticateToken, upload.single("image"), merchandiseController.createMerchandise);
-router.put("/:id", tokenMiddleware.authenticateToken, merchandiseController.updateMerchandise);
+router.put("/:id", tokenMiddleware.authenticateToken, upload.single("image"), merchandiseController.updateMerchandise);
 router.get("/:id", merchandiseController.getMerchandiseById);
 router.delete("/:id", tokenMiddleware.authenticateToken, merchandiseController.deleteMerchandise);
 

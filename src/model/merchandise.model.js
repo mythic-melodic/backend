@@ -112,10 +112,11 @@ const MerchandiseModel = {
     stock,
     price,
     image,
-    description
+    description,
+    category
   ) => {
     try {
-      const query = `UPDATE merchandise SET name = $1, album_id = $2, stock = $3, price = $4, image = $5, description = $6 WHERE id = $7 RETURNING *;
+      const query = `UPDATE merchandise SET name = $1, album_id = $2, stock = $3, price = $4, image = $5, description = $6, category = $7 WHERE id = $8 RETURNING *;
 `;
       const result = await pool.query(query, [
         name,
@@ -124,6 +125,7 @@ const MerchandiseModel = {
         price,
         image,
         description,
+        category,
         merchandiseId,
       ]);
       if (result.rows.length === 0) {
