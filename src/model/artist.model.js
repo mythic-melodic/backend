@@ -180,7 +180,7 @@ const ArtistModel = {
   getOrders: async (artistId) => {
     try {
       const query = `
-                SELECT * FROM orders o 
+                SELECT o.* FROM orders o 
                 INNER JOIN order_merchandise om ON o.id = om.order_id 
                 INNER JOIN merchandise m ON om.merchandise_id = m.id 
                 WHERE artist_id = $1;
