@@ -16,10 +16,10 @@ const FavoriteModel = {
         }
     },
     
-    getFavoriteByUser: async (user_id, callback) => {
+    getFavoriteByUser: async (user_id, limit, offset, callback) => {
         try {
-            const query = `SELECT * FROM likes_user_track WHERE user_id = $1`;
-            const result = await pool.query(query, [user_id]);
+            const query = `SELECT * FROM likes_user_track WHERE user_id = $1 LIMIT $2 OFFSET $3;`;
+            const result = await pool.query(query, [user_id, limit, offset]);
             return callback(null, result.rows);
         } catch (error) {
             return callback(error);
