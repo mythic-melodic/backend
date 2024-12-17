@@ -1,15 +1,15 @@
 import pool from "../config/db.connect.js";
 
 const PlayListModel = {
-  createPlayList: async (name, creator_id, description, callback) => {
+  createPlayList: async (name, creator_id, cover, description, callback) => {
     try {
       const query = `
-                INSERT INTO playlists (name, creator_id, description, date_created, date_modified) 
-                VALUES ($1, $2, $3, NOW(), NOW())
+                INSERT INTO playlists (name, creator_id, cover, description, date_created, date_modified) 
+                VALUES ($1, $2, $3, $4, NOW(), NOW())
                 RETURNING id
             `;
 
-      const result = await pool.query(query, [name, creator_id, description]);
+      const result = await pool.query(query, [name, creator_id, cover, description]);
       const playlist_id = result.rows[0].id;
 
       return callback(null,  { message: "Playlist created", playlist_id: playlist_id });
@@ -51,15 +51,28 @@ const PlayListModel = {
     }
   },
 
-  updatePlaylist: async (playlist_id, name, description, callback) => {
+  updatePlaylist: async (playlist_id, name, description, cover, callback) => {
     try {
-      const query = `UPDATE playlists SET name = $1, description = $2, date_modified = NOW() WHERE id = $3`;
-      await pool.query(query, [name, description, playlist_id]);
-      return callback(null, "Playlist updated");
+      const query = `
+        UPDATE playlists
+        SET name = $1, description = $2, cover = $3, date_modified = NOW()
+        WHERE id = $4
+        RETURNING id, name, description, cover, date_modified;
+      `;
+      const result = await pool.query(query, [name, description, cover, playlist_id]);
+  
+      // Kiểm tra nếu không có bản ghi nào được cập nhật
+      if (result.rows.length === 0) {
+        return callback(new Error("Playlist not found"));
+      }
+  
+      // Trả về thông tin của playlist vừa được cập nhật
+      return callback(null, result.rows[0]);
     } catch (error) {
       return callback(error);
     }
   },
+  
 
   deletePlaylist: async (playlist_id, callback) => {
     try {
@@ -92,56 +105,62 @@ const PlayListModel = {
         INSERT INTO playlist_track (playlist_id, track_id, track_order, added_at)
         SELECT $1, $2, next_track_order, NOW()
         FROM next_order
-        RETURNING *;`;  // Optionally return the inserted row for logging or further use
+        ON CONFLICT (playlist_id, track_id) DO NOTHING
+        RETURNING *;`; // Return the inserted row, if successful
   
       const result = await pool.query(query, [playlist_id, track_id]);
-      
-      // If you want to return the inserted song data for logging
   
+      if (result.rowCount === 0) {
+        // If no rows were inserted, it means the track already exists
+        return callback(null, "Track already exists in the playlist");
+      }
+  
+      // If successful, return a success message
       return callback(null, "Track added to playlist");
     } catch (error) {
-      console.error("Error adding track to playlist:", error);  // Additional logging for errors
+      console.error("Error adding track to playlist:", error);
       return callback(error);
     }
-},
+  },
+  
 
 deleteTrackFromPlaylist: async (playlist_id, track_id, callback) => {
-  // try {
-  //   // Step 1: Find the `track_order` of the track being deleted
-  //   const findOrderQuery = `SELECT track_order FROM playlist_track WHERE playlist_id = $1 AND track_id = $2`;
-  //   const result = await pool.query(findOrderQuery, [playlist_id, track_id]);
-
-  //   // If the track to delete is found
-  //   if (result.rows.length > 0) {
-  //     const trackOrder = result.rows[0].track_order;
-
-  //     // Step 2: Delete the track from the playlist
-  //     const deleteQuery = `DELETE FROM playlist_track WHERE playlist_id = $1 AND track_id = $2`;
-  //     await pool.query(deleteQuery, [playlist_id, track_id]);
-
-  //     // Step 3: Update `track_order` of subsequent tracks
-  //     const updateOrderQuery = `
-  //       UPDATE playlist_track
-  //       SET track_order = track_order - 1
-  //       WHERE playlist_id = $1 AND track_order > $2
-  //     `;
-  //     await pool.query(updateOrderQuery, [playlist_id, trackOrder]);
-
-  //     return callback(null, "Song deleted from playlist and track order updated");
-  //   } else {
-  //     // Track not found
-  //     return callback(null, "Track not found in playlist");
-  //   }
-  // } catch (error) {
-  //   return callback(error);
-  // }
   try {
-    const query = `DELETE FROM playlist_track WHERE playlist_id = $1 AND track_id = $2`;
-    await pool.query(query, [playlist_id, track_id]);
-    return callback(null, "Track deleted from playlist");
+    // Step 1: Find the `track_order` of the track being deleted
+    const findOrderQuery = `SELECT track_order FROM playlist_track WHERE playlist_id = $1 AND track_id = $2`;
+    const result = await pool.query(findOrderQuery, [playlist_id, track_id]);
+
+    // If the track to delete is found
+    if (result.rows.length > 0) {
+      const trackOrder = result.rows[0].track_order;
+
+      // Step 2: Delete the track from the playlist
+      const deleteQuery = `DELETE FROM playlist_track WHERE playlist_id = $1 AND track_id = $2`;
+      await pool.query(deleteQuery, [playlist_id, track_id]);
+
+      // Step 3: Update `track_order` of subsequent tracks
+      const updateOrderQuery = `
+        UPDATE playlist_track
+        SET track_order = track_order - 1
+        WHERE playlist_id = $1 AND track_order > $2
+      `;
+      await pool.query(updateOrderQuery, [playlist_id, trackOrder]);
+
+      return callback(null, "Track deleted from playlist");
+    } else {
+      // Track not found
+      return callback(null, "Track not found in playlist");
+    }
   } catch (error) {
     return callback(error);
   }
+  // try {
+  //   const query = `DELETE FROM playlist_track WHERE playlist_id = $1 AND track_id = $2`;
+  //   await pool.query(query, [playlist_id, track_id]);
+  //   return callback(null, "Track deleted from playlist");
+  // } catch (error) {
+  //   return callback(error);
+  // }
 },
 
 // changeTrackOrder: async (playlist_id, song_id, new_order, callback) => {

@@ -1,7 +1,7 @@
 import pool from "../config/db.connect.js";
 
 const LibraryModel = {
-    getRecentTracks: async (user_id, callback) => {
+    getRecentTracks: async (user_id, limit, offset, callback) => {
         try {
             const query = `
             SELECT 
@@ -18,17 +18,17 @@ const LibraryModel = {
                 t.id, t.title
             ORDER BY 
                 latest_played_at DESC
-            LIMIT 10;
+            LIMIT $2 OFFSET $3;
             `;
 
-            const result = await pool.query(query, [user_id]);
+            const result = await pool.query(query, [user_id, limit, offset]);
             return callback(null, result.rows);
         } catch (error) {
             return callback(error);
         }
     },
 
-    getRecentAlbums: async (user_id, callback) => {
+    getRecentAlbums: async (user_id, limit, offset, callback) => {
         try {
             const query = `
             SELECT 
@@ -47,18 +47,17 @@ const LibraryModel = {
                 a.id, a.title, a.cover  
             ORDER BY 
                 MAX(put.played_at) DESC  
-            LIMIT 10;
-
+            LIMIT $2 OFFSET $3;
             `;
 
-            const result = await pool.query(query, [user_id]);
+            const result = await pool.query(query, [user_id, limit, offset]);
             return callback(null, result.rows);
         } catch (error) {
             return callback(error);
         }
     },
 
-    getRecentArtists: async (user_id, callback) => {
+    getRecentArtists: async (user_id, limit, offset, callback) => {
         try {
             const query = `
             SELECT
@@ -79,11 +78,10 @@ const LibraryModel = {
                 us.id, us.display_name  
             ORDER BY 
                 last_played_at DESC  
-            LIMIT 10;
-
+            LIMIT $2 OFFSET $3;
             `;
 
-            const result = await pool.query(query, [user_id]);
+            const result = await pool.query(query, [user_id, limit, offset]);
             return callback(null, result.rows);
         } catch (error) {
             return callback(error);

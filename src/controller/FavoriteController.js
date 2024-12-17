@@ -23,6 +23,9 @@ class FavoriteController {
     }
     async getFavoriteByUser(req, res) {
         const user_id = req.user.id;
+        const page = parseInt(req.query.page) || 1; // Mặc định page = 1 nếu không truyền
+        const limit = parseInt(req.query.limit) || 10; // Mặc định limit = 10 nếu không truyền
+        const offset = (page - 1) * limit; // Tính toán offset
 
         // Validate user_id
         if (!user_id) {
@@ -30,7 +33,7 @@ class FavoriteController {
         }
 
         try {
-            FavoriteModel.getFavoriteByUser(user_id, (error, result) => {
+            FavoriteModel.getFavoriteByUser(user_id, limit, offset, (error, result) => {
                 if (error) {
                     res.status(500).send("Error: " + error.message);
                 }
