@@ -1,15 +1,17 @@
 import PlayListModel from "../model/playlist.model.js";
+import useGoogleDriveUpload from '../hooks/upload.media.js';
 
 class PlaylistController {
     async createPlaylist(req, res) {
         const { name, description } = req.body;
         const creator_id = req.user.id;
+        const cover = await useGoogleDriveUpload(req, res);
         try {
-            PlayListModel.createPlayList(name, creator_id, description, (error, result) => {
+            PlayListModel.createPlayList(name, creator_id, cover, description, (error, result) => {
                 if (error) {
                     res.status(400).send(error);
                 }
-                res.status(200).send({'message': result.message, 'playlist_id': result.playlist_id});
+                res.status(200).send({'message': result.message, 'playlist_id': result.playlist_id, 'cover': cover});
             });
         } catch (error) {
             res.status(500).send("Error: " + error.message);
@@ -76,12 +78,13 @@ class PlaylistController {
     async updatePlaylist(req, res) {
         const playlist_id = req.params.id;
         const { name, description } = req.body;
+        const cover = await useGoogleDriveUpload(req, res);
         try {
-            PlayListModel.updatePlaylist(playlist_id, name, description, (error, result) => {
+            PlayListModel.updatePlaylist(playlist_id, name, description, cover, (error, result) => {
                 if (error) {
                     res.status(400).send(error);
                 }
-                res.status(200).send({'message': result});
+                res.status(200).send({'message': "Playlist updated", 'playlist_id': playlist_id, 'cover': cover});
             });
         } catch (error) {
             res.status(500).send("Error: " + error.message);
@@ -117,8 +120,7 @@ class PlaylistController {
     }
 
     async addTrackToPlaylist(req, res) {
-        const playlist_id = req.params.id;
-        const { track_id } = req.body;
+        const { track_id, playlist_id } = req.body;
         try {
             PlayListModel.addTrackToPlaylist(playlist_id, track_id, (error, result) => {
                 if (error) {
