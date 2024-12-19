@@ -20,23 +20,23 @@ class ArtistController {
       res.status(500).send("Error: " + error.message);
     }
   }
-    async getLastestTracks(req, res) {
-        const { id } = req.params;
-        // Validate artist_id
-        if (!id) {
-            return res.status(400).send("Artist ID is required");
-        }
-        try {
-            ArtistModel.getLastestTracks(id, (error, result) => {
-                if (error) {
-                    res.status(500).send("Error: " + error.message);
-                }
-                res.status(200).send(result);
-            });
-        } catch (error) {
-            res.status(500).send("Error: " + error.message);
-        }
+  async getLastestTracks(req, res) {
+    const { id } = req.params;
+    // Validate artist_id
+    if (!id) {
+      return res.status(400).send("Artist ID is required");
     }
+    try {
+      ArtistModel.getLastestTracks(id, (error, result) => {
+        if (error) {
+          res.status(500).send("Error: " + error.message);
+        }
+        res.status(200).send(result);
+      });
+    } catch (error) {
+      res.status(500).send("Error: " + error.message);
+    }
+  }
   async create(req, res) {
     const { artist_name, artist_bio, artist_img } = req.body;
     ArtistModel.create(artist_name, artist_bio, artist_img, (error, result) => {
