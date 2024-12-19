@@ -1,4 +1,5 @@
 import AccountModel from '../model/account.model.js';
+import useGoogleDriveUpload from '../hooks/upload.media.js';
 
 class AccountController {
     async signup(req, res) {
@@ -72,6 +73,57 @@ class AccountController {
             res.status(500).send('Error: ' + error.message);
         }
     }
+    async updateUser(req, res) {
+        const { id } = req.params; // Lấy ID từ tham số
+        const userData = req.body; // Lấy dữ liệu người dùng từ yêu cầu
+    
+        try {
+            // Tải ảnh lên Google Drive (nếu có file)
+            if(req.file){
+            const avatar = await useGoogleDriveUpload(req, res);
+    
+            // Kiểm tra nếu có ảnh mới, cập nhật avatar trong userData
+            if (req.file) {
+                userData.avatar = avatar;
+            }
+        }
+    
+            // Gọi model để cập nhật người dùng
+            const result = await AccountModel.updateUser(id, userData);
+    
+            res.status(200).send({
+                success: true,
+                message: "User updated successfully",
+                result,
+            });
+        } catch (error) {
+            // Xử lý lỗi từ model
+            res.status(500).send({
+                success: false,
+                message: "Error updating user",
+                error: error.message,
+            });
+        }
+    }
+    
+    async changePassword(req, res) {
+        const { id } = req.params; // Lấy ID từ params
+        const { oldPassword, newPassword } = req.body; // Lấy oldPassword và newPassword từ body
+    
+        try {
+            // Gọi model để thay đổi mật khẩu
+            const result = await AccountModel.changePassword(id, oldPassword, newPassword);
+            res.status(200).send(result); // Trả về phản hồi thành công
+        } catch (error) {
+            // Xử lý lỗi từ model
+            res.status(200).send({
+                success: false,
+                message: "Error changing password",
+                error: error.message,
+            });
+        }
+    }    
+    
 }
 
 export default new AccountController();
