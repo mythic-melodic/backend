@@ -14,7 +14,6 @@ const AccountModel = {
       }
 
       const user = result.rows[0];
-
       // Compare the provided password with the hashed password
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
@@ -173,5 +172,61 @@ const AccountModel = {
       throw new Error("Database query failed: " + error.message);
     }
   },
+    updateUser: async (id, userData) => {
+        const { display_name, avatar, gender, bio, date_of_birth } = userData;
+        const query = `
+            UPDATE users 
+            SET 
+                display_name = $1, 
+                avatar = $2, 
+                gender = $3, 
+                bio = $4, 
+                date_of_birth = $5 
+            WHERE id = $6
+            RETURNING *`; // Trả về dữ liệu sau khi cập nhật
+        try {
+            const result = await pool.query(query, [
+                display_name,
+                avatar,
+                gender,
+                bio,
+                date_of_birth,
+                id,
+            ]);
+            return result.rows[0]; // Trả về kết quả đầu tiên
+        } catch (error) {
+            throw new Error(error.message); // Ném lỗi để controller xử lý
+        }
+    },
+    changePassword: async (id, oldPassword, newPassword) => {
+        const getPasswordQuery = `SELECT password FROM users WHERE id = $1`;
+        const updatePasswordQuery = `UPDATE users SET password = $1 WHERE id = $2`;
+    
+        try {
+            // Lấy mật khẩu hiện tại từ cơ sở dữ liệu
+            const result = await pool.query(getPasswordQuery, [id]);
+            if (result.rows.length === 0) {
+                throw new Error("User not found");
+            }
+    
+            const currentPassword = result.rows[0].password;
+    
+            // Kiểm tra oldPassword có khớp không
+            const isMatch = await bcrypt.compare(oldPassword, currentPassword);
+            if (!isMatch) {
+                throw new Error("Old password is incorrect");
+            }
+    
+            // Nếu mật khẩu khớp, băm newPassword và cập nhật
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(newPassword, salt);
+            await pool.query(updatePasswordQuery, [hashedPassword, id]);
+    
+            return { success: true, message: "Password updated successfully" };
+        } catch (error) {
+            throw new Error(error.message);
+        }
+    },
+    
 };
 export default AccountModel;
