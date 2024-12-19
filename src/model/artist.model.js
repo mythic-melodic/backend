@@ -191,6 +191,23 @@ const ArtistModel = {
       throw new Error("Failed to get all orders by artist: " + error.message);
     }
   },
+
+  getAllTracks: async (artistId) => {
+    try {
+      const query = `SELECT t.id AS track_id, t.title AS track_title, a.title AS album_title, DATE(ut.created_at) AS created_at, count(put.track_id) AS streams 
+                    FROM tracks t
+                    LEFT JOIN plays_user_track put ON put.track_id = t.id
+                    INNER JOIN user_track ut ON ut.track_id = t.id 
+                    INNER JOIN users u ON u.id = ut.user_id 
+                    INNER JOIN albums a ON a.artist_id = u.id 
+                    WHERE u.id = $1 and ut.status = 'approved'
+                    GROUP BY t.id, t.title, a.title, ut.created_at`;
+      const result = await pool.query(query, [artistId]);
+      return result.rows;
+    } catch (error) {
+      throw new Error("Failed to get all tracks by artist: " + error.message);
+    }
+  },
 };
 
 export default ArtistModel;
