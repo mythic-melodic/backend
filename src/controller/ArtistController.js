@@ -180,5 +180,18 @@ class ArtistController {
       return res.status(500).send("Error: " + error.message);
     }
   }
+
+  async getWeeklySales(req, res) {
+    const artist_id = req.params.id;
+    try {
+      const result = await ArtistModel.getWeeklySales(artist_id);
+      if (!result) {
+        return res.status(404).send("No sales found");
+      }
+      return res.status(200).send(result);
+    } catch (error) {
+      return res.status(500).send("Error: " + error.message);
+    }
+  }
 }
 export default new ArtistController();

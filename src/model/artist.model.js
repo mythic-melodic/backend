@@ -287,6 +287,36 @@ const ArtistModel = {
       throw new Error("Database query failed: " + error.message);
     }
   },
+
+  getWeeklySales: async (artistId) => {
+    const query = `
+    WITH RECURSIVE date_range AS (
+        SELECT date(now()) AS order_date
+        UNION ALL
+        SELECT (order_date - INTERVAL '1 day')::date
+        FROM date_range
+        WHERE order_date > date(now()) - INTERVAL '6 days'
+    )
+    SELECT 
+        dr.order_date,
+        COALESCE((
+            SELECT SUM(om.quantity * om.price_each) 
+            FROM orders o
+            LEFT JOIN order_merchandise om ON om.order_id = o.id
+            LEFT JOIN merchandise m ON m.id = om.merchandise_id
+            WHERE dr.order_date = DATE(o.order_date)
+            AND m.artist_id = $1
+        ), 0) AS sales
+    FROM date_range dr
+    ORDER BY dr.order_date;
+    `;
+    try {
+      const result = await pool.query(query, [artistId]);
+      return result.rows;
+    } catch (error) {
+      throw new Error("Database query failed: " + error.message);
+    }
+  },
 };
 
 export default ArtistModel;
