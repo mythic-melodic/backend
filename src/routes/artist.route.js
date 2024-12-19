@@ -16,6 +16,7 @@ router.get("/orders", tokenMiddleware.authenticateToken, ArtistController.getOrd
 router.get("/pending/:id", ArtistController.getAllTracksPending);
 router.get("/:id/albums", ArtistController.getAlbums);
 router.get("/:id/tracks", ArtistController.getAllTracks);
+router.get("/:id/weekly-orders", ArtistController.getWeeklyOrders);
 router.get("/:id/top-tracks", ArtistController.getTopTracks);
 router.get("/:id/latest-tracks", ArtistController.getLastestTracks);
 router.get('/:id', ArtistController.getById);
