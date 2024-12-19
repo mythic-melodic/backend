@@ -317,6 +317,35 @@ const ArtistModel = {
       throw new Error("Database query failed: " + error.message);
     }
   },
+
+  getWeeklyStreams: async (artistId) => {
+    try {
+      const query = `
+      WITH RECURSIVE date_range AS (
+        SELECT date(now()) AS played_date
+        UNION ALL
+        SELECT (played_date - INTERVAL '1 day')::date
+        FROM date_range
+        WHERE played_date > date(now()) - INTERVAL '6 days'
+      )
+      SELECT 
+          dr.played_date,
+          COALESCE((
+              SELECT COUNT(put.track_id)
+              FROM plays_user_track put
+              LEFT JOIN user_track ut ON ut.track_id = put.track_id
+              WHERE dr.played_date = DATE(put.played_at)
+              AND ut.user_id = $1
+          ), 0) AS play_count
+      FROM date_range dr
+      ORDER BY dr.played_date;
+`;
+      const result = await pool.query(query, [artistId]);
+      return result.rows;
+    } catch (error) {
+      throw new Error("Database query failed: " + error.message);
+    }
+  },
 };
 
 export default ArtistModel;
