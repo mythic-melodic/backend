@@ -146,6 +146,8 @@ class AccountController {
         error: error.message,
       });
     }
+    }
+
     async updateUser(req, res) {
         const { id } = req.params; // Lấy ID từ tham số
         const userData = req.body; // Lấy dữ liệu người dùng từ yêu cầu
@@ -198,6 +200,5 @@ class AccountController {
     }    
    
   }
-}
 
 export default new AccountController();
