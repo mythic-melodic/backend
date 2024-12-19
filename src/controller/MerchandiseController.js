@@ -89,17 +89,22 @@ class MerchandiseController {
         });
       }
 
-      const image = await useGoogleDriveUpload(req, res);
+      let image = null;
+      // Check if a new image is uploaded
+      if (req.file) {
+        // If a new image is uploaded, use Google Drive upload
+        image = await useGoogleDriveUpload(req, res);
+      } else {
+        // If no new image is uploaded, use the existing image from the database
+        image = existingMerchandise.image;
+      }
+
+      // Call the update method and pass an object with the new data
       const updatedMerchandise = await MerchandiseModel.updateMerchandise(
         merchandise_id,
-        name,
-        album_id,
-        stock,
-        price,
-        image,
-        description,
-        category,
+        { name, albumId: album_id, stock, price, image, description, category }
       );
+
       return res.status(200).json({
         message: "Merchandise updated successfully",
         updatedMerchandise,
@@ -209,7 +214,7 @@ class MerchandiseController {
 
   async getFavArtistStore(req, res) {
     try {
-      const userId = req.params.id; 
+      const userId = req.params.id;
       const data = await MerchandiseModel.getFavArtistStore(userId);
       if (!data || data.length === 0) {
         return res.status(404).json({
@@ -378,7 +383,7 @@ class MerchandiseController {
       return res.status(200).json({
         success: true,
         message: "Merchandise matching search term fetched successfully.",
-        data: searchResults, 
+        data: searchResults,
       });
     } catch (error) {
       console.error("Error fetching merchandise by search:", error);
