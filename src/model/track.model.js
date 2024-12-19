@@ -93,24 +93,40 @@ const TrackModel = {
   
   deleteTrackById: async (id, callback) => {
     try {
-      const check = await pool.query(`SELECT * FROM tracks WHERE id = $1`, [
-        id,
-      ]);
-
-      if (check.rowCount === 0) {
-        return callback("Track not found");
+      // Step 1: Check if the track exists
+      const trackCheckQuery = `SELECT * FROM tracks WHERE id = $1`;
+      const trackCheck = await pool.query(trackCheckQuery, [id]);
+  
+      if (trackCheck.rowCount === 0) {
+        return callback({ status: 404, message: "Track not found" });
       }
-      const genreQuery = `DELETE FROM track_genre WHERE track_id = $1`;
-      await pool.query(genreQuery, [id]);
-      const uploadsQuery = `DELETE FROM uploads_user_track WHERE track_id = $1`;
-        await pool.query(uploadsQuery, [id]);
-      const query = `DELETE FROM tracks WHERE id = $1`;
-      const result = await pool.query(query, [id]);
-      return callback(null, result);
+  
+      const track = trackCheck.rows[0];
+  
+      // Step 2: Delete related entries in `track_genre` table
+      const deleteGenreQuery = `DELETE FROM track_genre WHERE track_id = $1`;
+      await pool.query(deleteGenreQuery, [id]);
+  
+      // Step 3: Delete related entries in `track_album` table
+      const deleteAlbumQuery = `DELETE FROM track_album WHERE track_id = $1`;
+      await pool.query(deleteAlbumQuery, [id]);
+  
+      // Step 4: Delete related entries in `user_track` table (collaborators, main artist)
+      const deleteUserTrackQuery = `DELETE FROM user_track WHERE track_id = $1`;
+      await pool.query(deleteUserTrackQuery, [id]);
+  
+      // Step 5: Delete the track itself from the `tracks` table
+      const deleteTrackQuery = `DELETE FROM tracks WHERE id = $1`;
+      await pool.query(deleteTrackQuery, [id]);
+  
+      // Step 6: Return success response
+      return callback(null, { status: 200, message: "Track deleted successfully" });
     } catch (error) {
-      return callback(error);
+      console.error("Error in deleteTrackById:", error);
+      return callback({ status: 500, message: "Internal server error", error });
     }
-  },
+  }
+  ,
   addTrack: async (track, track_url, callback) => {
     try {
       const {
@@ -229,7 +245,7 @@ const TrackModel = {
       }
 
       if(mainArtistProfit === 100){
-        const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share, status) VALUES ($1, $2, $3, $4. $5)`;
+        const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share, status) VALUES ($1, $2, $3, $4, $5)`;
         await pool.query(mainArtistQuery, [
             user_id,
             trackResult.rows[0].id,
