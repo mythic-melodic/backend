@@ -206,5 +206,31 @@ class ArtistController {
       return res.status(500).send("Error: " + error.message);
     }
   }
+
+  async getMostPlayedTracks(req, res) {
+    const artist_id = req.params.id;
+    try {
+      const result = await ArtistModel.getMostPlayedTracks(artist_id);
+      if (!result) {
+        return res.status(404).send("No tracks found");
+      }
+      return res.status(200).send(result);
+    } catch (error) {
+      return res.status(500).send("Error: " + error.message);
+    }
+  }
+
+  async getMerchandiseTypes(req, res) {
+    const artist_id = req.params.id;
+    try {
+      const result = await ArtistModel.getMerchandiseTypes(artist_id);
+      if (!result) {
+        return res.status(404).send("No merchandise types found");
+      }
+      return res.status(200).send(result);
+    } catch (error) {
+      return res.status(500).send("Error: " + error.message);
+    }
+  }
 }
 export default new ArtistController();

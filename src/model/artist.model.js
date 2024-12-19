@@ -346,6 +346,40 @@ const ArtistModel = {
       throw new Error("Database query failed: " + error.message);
     }
   },
+
+  getMostPlayedTracks: async (artistId) => {
+    try {
+      const query = `
+      SELECT t.id, t.title, COUNT(p.track_id) AS play_count
+        FROM tracks t
+        JOIN user_track ut ON t.id = ut.track_id
+        LEFT JOIN plays_user_track p ON t.id = p.track_id
+        WHERE ut.user_id = $1 AND ut.artist_role = 'original artist'
+        GROUP BY t.id, t.title
+        ORDER BY play_count DESC
+        LIMIT 10;
+      `;
+      const result = await pool.query(query, [artistId]);
+      return result.rows;
+    } catch (error) {
+      throw new Error("Database query failed: " + error.message);
+    }
+  },
+
+  getMerchandiseTypes: async (artistId) => {
+    try {
+      const query = `
+      SELECT category, COUNT(*) as count
+      FROM merchandise
+      WHERE artist_id = $1
+      GROUP BY category
+      `;
+      const result = await pool.query(query, [artistId]);
+      return result.rows;
+    } catch (error) {
+      throw new Error("Database query failed: " + error.message);
+    }
+  },
 };
 
 export default ArtistModel;
