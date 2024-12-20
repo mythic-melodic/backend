@@ -302,7 +302,8 @@ const MusicModel = {
                 a.cover AS cover,
                 ap.total_plays,
                 u.id AS artist_id,
-                u.display_name AS artists
+                u.display_name AS artists,
+                a.release_date AS release_date
             FROM albums a
             INNER JOIN album_plays ap ON a.id = ap.album_id
             INNER JOIN users u ON a.artist_id = u.id

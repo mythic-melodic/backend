@@ -32,11 +32,13 @@ const PlayListModel = {
     try {
       const query = `SELECT * FROM playlists WHERE id = $1`;
       const result = await pool.query(query, [playlist_id]);
+      // console.log('Result:', result.rows);
       if (result.rows.length === 0) {
         return callback("Playlist not found");
       }
       return callback(null, result.rows);
     } catch (error) {
+      console.error("Error getting playlist by ID:", error);
       return callback(error);
     }
   },
@@ -86,10 +88,42 @@ const PlayListModel = {
 
   getAllTracksInPlaylist: async (playlist_id, callback) => {
     try {
-      const query = `SELECT * FROM playlist_track WHERE playlist_id = $1`;
-      const result = await pool.query(query, [playlist_id]);
-      return callback(null, result.rows);
+      const query = `select 
+        tracks.id as id,
+        tracks.title as track_title,
+        playlists.name as playlist_title,
+        tracks.duration as duration,
+        tracks.track_url as url,
+        playlist_track.track_order as orders
+        from tracks
+        inner join playlist_track on tracks.id = playlist_track.track_id
+        inner join playlists on playlists.id = playlist_track.playlist_id
+        where playlists.id = $1 and track_url is not null
+        order by orders asc`;
+      const tracksResult  = await pool.query(query, [playlist_id]);
+  
+      const tracks = await Promise.all(tracksResult.rows.map(async (track) => {
+        const artistQuery = `SELECT users.display_name, users.username, users.id FROM user_track
+          INNER JOIN users ON user_track.user_id = users.id 
+          WHERE user_track.track_id = $1`;
+        const artistResult = await pool.query(artistQuery, [track.id]);
+  
+        return {
+          track_title: track.track_title,
+          duration: track.duration,
+          id: track.id,
+          url: track.url,
+          orders: track.orders,
+          artists: artistResult.rows.map((row) => ({
+            display_name: row.display_name,
+            username: row.username,
+            id: row.id,
+          })),
+        };
+      }));
+      return callback(null, tracks);
     } catch (error) {
+      console.error("Error getting tracks in playlist:", error);
       return callback(error);
     }
   },
@@ -171,7 +205,7 @@ deleteTrackFromPlaylist: async (playlist_id, track_id, callback) => {
 
 //     // Check if the track was found
 //     if (result.rows.length === 0) {
-//       return callback(null, "Track not found in playlist");
+//       return callback(null, "r in playlist");
 //     }
 
 //     const currentOrder = result.rows[0].track_order;

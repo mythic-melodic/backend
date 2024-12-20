@@ -5,8 +5,10 @@ import useGoogleDriveUpload from '../hooks/upload.media.js';
 class TrackController {
     async getTrackById(req, res) {
         const {id}= req.params;
+        // console.log('Received track id:', id);
         TrackModel.getById(id, (error, result) => {
         if (error) {
+            console.log('Error getting track:', error);
             return res.status(404).json({ message: error });
         }
         return res.status(200).json(result);
@@ -80,6 +82,25 @@ class TrackController {
         });
       } catch (error) {
         res.status(500).json({ message: error.message, success: false}); // Catch any other errors
+      }
+    }
+    
+    async updateTrack(req, res) {
+        try {
+        const track = req.body;
+        console.log('Received track data:', track);
+        TrackModel.updateTrack(track, (error, result) => {
+          if (error) {
+            return res.status(500).json({ message: error, success: false });
+          }
+          res.status(200).send({
+            success: true,
+            message: "Track updated successfully",
+            result: result,
+          });
+        });
+      } catch (error) {
+        res.status(500).json({ message: error.message, success: false });
       }
     }
 }

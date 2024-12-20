@@ -33,6 +33,7 @@ class PlaylistController {
 
     async getPlaylistById(req, res) {
         const playlist_id = req.params.id;
+        // console.log('Received playlist id:', playlist_id);
         try {
             PlayListModel.getPlaylistById(playlist_id, (error, result) => {
                 if (error) {
@@ -43,19 +44,20 @@ class PlaylistController {
                     return res.status(404).json({ message: 'Playlist not found' });
                 }
     
-                const playlist = result[0];
+                const playlist = result;
     
                 if (playlist.is_public) {
                     return res.status(200).json(playlist);
                 }
     
-                if (playlist.creator_id !== req.user.id && req.user.role !== 'admin') {
-                    return res.status(403).json({ message: 'You do not have permission to access this playlist' });
-                }
+                // if (playlist.creator_id !== req.user.id && req.user.role !== 'admin') {
+                //     return res.status(403).json({ message: 'You do not have permission to access this playlist' });
+                // }
     
                 res.status(200).json(playlist);
             });
         } catch (error) {
+            console.error("Error getting playlist by ID01:", error);
             return res.status(500).send("Error: " + error.message);
         }
     }
