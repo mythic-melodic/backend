@@ -25,9 +25,23 @@ const TrackModel = {
       INNER JOIN users ON user_track.user_id = users.id 
       WHERE user_track.track_id = $1`;
       const artistResult = await pool.query(artistQuery, [id]);
-
+      const albumQuery = `select 
+                        albums.id as id,
+                        tracks.title as track_title,
+                        albums.title as album_title,
+                        albums.cover as cover
+                        from tracks
+                        inner join track_album on tracks.id = track_album.track_id
+                        inner join albums on albums.id = track_album.album_id
+                        where track_id = $1`;
+      const albumResult = await pool.query(albumQuery, [id]);
       const result = {
         track: trackResult.rows[0],
+        album: albumResult.rows.map((row) => ({
+          id: row.id,
+          album_title: row.album_title,
+          cover: row.cover,
+        })), // Assuming multiple albums
         genre: genreResult.rows.map((row) => row.genre_id), // Assuming multiple genres
         artists: artistResult.rows.map((row) => ({
           display_name: row.display_name,
@@ -45,7 +59,8 @@ const TrackModel = {
         language: result.track.language,
         track_url: result.track.track_url,
         genres: result.genre.length > 0 ? result.genre : null, // If genres exist, include them, else null
-        artists: result.artists.length > 0 ? result.artists : null, // If artists exist, include them, else null
+        artists: result.artists.length > 0 ? result.artists : null,
+        album: result.album.length > 0 ? result.album : null // If artists exist, include them, else null
       };
       return callback(null, trackInfo);
     } catch (error) {
@@ -311,5 +326,82 @@ const TrackModel = {
       return callback({ status: 500, message: "Internal server error", error });
     }
   },
+  updateTrack: async (track, callback) => {
+    try {
+      const {
+        title,
+        lyrics,
+        release_date,
+        duration,
+        language,
+        genre,
+        album,
+      } = track;
+      const id = track.track_id;
+      // Step 1: Check if the track exists
+      const trackCheckQuery = `SELECT * FROM tracks WHERE id = $1`;
+      const checkTrack = await pool.query(trackCheckQuery, [id]);
+  
+      if (checkTrack.rowCount === 0) {
+        return callback({ status: 404, message: "Track not found" });
+      }
+  
+      // Step 2: Update track in `tracks` table
+      const updateTrackQuery = `
+                UPDATE tracks 
+                SET title = $1, lyrics = $2, release_date = $3, duration = $4, language = $5
+                WHERE id = $6
+                RETURNING *;
+            `;
+      const trackResult = await pool.query(updateTrackQuery, [
+        title,
+        lyrics,
+        release_date,
+        duration,
+        language,
+        id,
+      ]);
+  
+      // Step 3: Update track in `track_album` table
+      const updateAlbumQuery = `
+                UPDATE track_album 
+                SET album_id = $1
+                WHERE track_id = $2;
+            `;
+      await pool.query(updateAlbumQuery, [album, id]);
+  
+      // Step 4: Delete existing entries in `track_genre` table
+   // Step 4: Update entries in `track_genre` table
+for (let i = 0; i < genre.length; i++) {
+  const genreId =  genre[i].toLowerCase();
+
+  // Check if the combination of track_id and genre_id already exists
+  const checkGenreQuery = `SELECT 1 FROM track_genre WHERE track_id = $1 AND genre_id = $2`;
+  const checkGenreResult = await pool.query(checkGenreQuery, [id, genreId]);
+
+  if (checkGenreResult.rowCount === 0) {
+    // If it does not exist, insert a new entry
+    const insertGenreQuery = `
+      INSERT INTO track_genre (track_id, genre_id) VALUES ($1, $2)
+    `;
+    await pool.query(insertGenreQuery, [id, genreId]);
+  } else {
+    // If it exists, update the entry (if there are other fields to update)
+    // For this example, we assume there are no other fields to update
+    // If there are, you can add the update logic here
+  }
+}
+  
+      // Step 6: Return success response
+      return callback(null, {
+        status: 200,
+        message: "Track updated successfully",
+        track: trackResult.rows[0],
+      });
+    } catch (error) {
+      console.error("Error in updateTrack:", error);
+      return callback({ status: 500, message: "Internal server error", error });
+    }
+  }
 };
 export default TrackModel;

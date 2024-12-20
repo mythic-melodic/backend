@@ -3,7 +3,7 @@ import playlistRoute from "./playlist.route.js";
 import artistRoute from "./artist.route.js";
 import trackRoute from "./track.route.js";
 import merchandiseRoute from "./merchandise.route.js";
-
+import albumRoute from "./album.route.js";
 import musicRoute from "./music.route.js";
 import favoriteRoute from "./favorite.route.js";
 import libraryRoute from "./library.route.js";
@@ -23,7 +23,8 @@ function route(app) {
     app.use('/api/v1/cart', cartRoute);
     app.use('/api/v1/order', OrderRoute);
     app.use('/api/v1/search', SearchRoute);
-    app.use('/api/v1/album', AlbumRoute);
+    // app.use('/api/v1/album', AlbumRoute);
+    app.use('/api/v1/album', albumRoute);
 }
 
 
