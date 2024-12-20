@@ -8,12 +8,13 @@ const MerchandiseModel = {
     stock,
     price,
     image,
-    description
+    description,
+    category
   ) => {
     try {
       const query = `
-      INSERT INTO merchandise (name, artist_id, album_id, stock, price, image, description, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP) RETURNING id;
+      INSERT INTO merchandise (name, artist_id, album_id, stock, price, image, description, category, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP) RETURNING id;
     `;
 
       const result = await pool.query(query, [
@@ -24,9 +25,10 @@ const MerchandiseModel = {
         price,
         image,
         description,
+        category,
       ]);
 
-      return { merchandise_id: result.rows[0].id };
+      return result.rows[0];
     } catch (error) {
       throw new Error("Failed to create merchandise: " + error.message);
     }
@@ -105,25 +107,64 @@ const MerchandiseModel = {
 
   updateMerchandise: async (
     merchandiseId,
-    name,
-    albumId,
-    stock,
-    price,
-    image,
-    description
+    { name, albumId, stock, price, image, description, category }
   ) => {
     try {
-      const query = `UPDATE merchandise SET name = $1, album_id = $2, stock = $3, price = $4, image = $5, description = $6 WHERE id = $7 RETURNING *;
-`;
-      const result = await pool.query(query, [
-        name,
-        albumId,
-        stock,
-        price,
-        image,
-        description,
-        merchandiseId,
-      ]);
+      const setClauses = [];
+      const values = [];
+      let index = 1;
+  
+      if (name !== undefined) {
+        setClauses.push(`name = $${index}`);
+        values.push(name);
+        index++;
+      }
+      if (albumId !== undefined) {
+        setClauses.push(`album_id = $${index}`);
+        values.push(albumId);
+        index++;
+      }
+      if (stock !== undefined) {
+        setClauses.push(`stock = $${index}`);
+        values.push(stock);
+        index++;
+      }
+      if (price !== undefined) {
+        setClauses.push(`price = $${index}`);
+        values.push(price);
+        index++;
+      }
+      if (image !== undefined) {
+        setClauses.push(`image = $${index}`);
+        values.push(image);
+        index++;
+      }
+      if (description !== undefined) {
+        setClauses.push(`description = $${index}`);
+        values.push(description);
+        index++;
+      }
+      if (category !== undefined) {
+        setClauses.push(`category = $${index}`);
+        values.push(category);
+        index++;
+      }
+  
+      if (setClauses.length === 0) {
+        throw new Error("No valid fields to update");
+      }
+  
+      // Add the WHERE clause and return the updated row
+      const query = `
+        UPDATE merchandise
+        SET ${setClauses.join(', ')}
+        WHERE id = $${index}
+        RETURNING *;
+      `;
+      values.push(merchandiseId);
+  
+      const result = await pool.query(query, values);
+  
       if (result.rows.length === 0) {
         throw new Error("Failed to update merchandise, no such record found.");
       }

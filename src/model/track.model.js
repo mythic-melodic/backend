@@ -59,7 +59,7 @@ const TrackModel = {
                       inner JOIN track_album AS t1 ON tracks.id = t1.track_id
                       inner JOIN albums ON albums.id = t1.album_id
                       WHERE tracks.track_url IS NOT NULL AND tracks.status = 'disable';`;
-      //tracks.track_url IS NOT NULL AND                 
+      //tracks.track_url IS NOT NULL AND
       const result = await pool.query(query);
       return callback(null, result.rows);
     } catch (error) {
@@ -69,14 +69,16 @@ const TrackModel = {
 
   enableTrack: async (id, callback) => {
     try {
-      const checkCollaborator = await pool.query(`SELECT * FROM user_track WHERE track_id = $1 and status ='approved'`, [id]);
+      const checkCollaborator = await pool.query(
+        `SELECT * FROM user_track WHERE track_id = $1 and status ='approved'`,
+        [id]
+      );
       if (checkCollaborator.rowCount === 0) {
         return callback("Track not approved by collaborator");
       }
       const query = `UPDATE tracks SET status = 'public' WHERE id = $1`;
       const result = await pool.query(query, [id]);
       return callback(null, result);
-
     } catch (error) {
       return callback(error);
     }
@@ -90,27 +92,78 @@ const TrackModel = {
       return callback(error);
     }
   },
-  
+
   deleteTrackById: async (id, callback) => {
     try {
-      const check = await pool.query(`SELECT * FROM tracks WHERE id = $1`, [
-        id,
-      ]);
+      // Begin a transaction
+      await pool.query("BEGIN");
 
-      if (check.rowCount === 0) {
-        return callback("Track not found");
-      }
-      const genreQuery = `DELETE FROM track_genre WHERE track_id = $1`;
-      await pool.query(genreQuery, [id]);
-      const uploadsQuery = `DELETE FROM uploads_user_track WHERE track_id = $1`;
-        await pool.query(uploadsQuery, [id]);
-      const query = `DELETE FROM tracks WHERE id = $1`;
-      const result = await pool.query(query, [id]);
-      return callback(null, result);
+      // Execute each DELETE statement with EXISTS condition
+      await pool.query(
+        `
+        DELETE FROM track_album 
+        WHERE track_id = $1 
+        AND EXISTS (SELECT 1 FROM track_album WHERE track_id = $1);
+      `,
+        [id]
+      );
+
+      await pool.query(
+        `
+        DELETE FROM likes_user_track 
+        WHERE track_id = $1 
+        AND EXISTS (SELECT 1 FROM likes_user_track WHERE track_id = $1);
+      `,
+        [id]
+      );
+
+      await pool.query(
+        `
+        DELETE FROM track_genre 
+        WHERE track_id = $1 
+        AND EXISTS (SELECT 1 FROM track_genre WHERE track_id = $1);
+      `,
+        [id]
+      );
+
+      await pool.query(
+        `
+        DELETE FROM plays_user_track 
+        WHERE track_id = $1 
+        AND EXISTS (SELECT 1 FROM plays_user_track WHERE track_id = $1);
+      `,
+        [id]
+      );
+
+      await pool.query(
+        `
+        DELETE FROM playlist_track 
+        WHERE track_id = $1 
+        AND EXISTS (SELECT 1 FROM playlist_track WHERE track_id = $1);
+      `,
+        [id]
+      );
+
+      await pool.query(
+        `
+        DELETE FROM tracks 
+        WHERE id = $1 
+        AND EXISTS (SELECT 1 FROM tracks WHERE id = $1);
+      `,
+        [id]
+      );
+
+      // Commit the transaction
+      await pool.query("COMMIT");
+
+      return callback(null, { message: "Track deleted successfully" });
     } catch (error) {
+      // Rollback in case of error
+      await pool.query("ROLLBACK");
       return callback(error);
     }
   },
+
   addTrack: async (track, track_url, callback) => {
     try {
       const {
@@ -126,7 +179,7 @@ const TrackModel = {
       // const user_id = 8;
       // const artist_role = 'original artist';
       const id = createId();
-  
+
       // Step 1: Check if the user exists
       const userCheckQuery = `SELECT * FROM users WHERE id = $1`;
       const checkArtist = await pool.query(userCheckQuery, [user_id]);
@@ -139,7 +192,6 @@ const TrackModel = {
       if (checkArtist.rows[0].user_role !== "artist") {
         return callback({ status: 403, message: "User is not an artist" });
       }
-  
 
       // Step 3: Insert track into `tracks` table
       const insertTrackQuery = `
@@ -159,7 +211,7 @@ const TrackModel = {
       //Step 4: Insert track into `track_album` table
       const albumCheckQuery = `SELECT * FROM albums WHERE id = $1`;
       const checkAlbum = await pool.query(albumCheckQuery, [album]);
-      if(checkAlbum.rowCount === 0){
+      if (checkAlbum.rowCount === 0) {
         const deleteTrackQuery = `DELETE FROM tracks WHERE id = $1`;
         await pool.query(deleteTrackQuery, [trackResult.rows[0].id]);
         return callback({ status: 404, message: "Album not found" });
@@ -171,7 +223,7 @@ const TrackModel = {
       await pool.query(albumQuery, [trackResult.rows[0].id, album]);
 
       // Step 5: Insert track into `track_genre` table
-      for(let i = 0; i < genre.length; i++){
+      for (let i = 0; i < genre.length; i++) {
         const checkGenreQuery = `SELECT * FROM genres WHERE id = $1`;
         const genreId = genre[i].toLowerCase();
         const checkGenre = await pool.query(checkGenreQuery, [genreId]);
@@ -191,51 +243,49 @@ const TrackModel = {
       // Step 6: insert track into 'user_track' table(collaborator)
       const collaborators = JSON.parse(track.collaborator);
       let sumProfit = 0;
-      if(collaborators.length > 0 && collaborators[0].name !== ""){
+      if (collaborators.length > 0 && collaborators[0].name !== "") {
         //console.log('Collaborators:', collaborators);
-      
-      
-      for (let i = 0; i < collaborators.length; i++) {
+
+        for (let i = 0; i < collaborators.length; i++) {
           sumProfit += parseInt(collaborators[i].profitShare, 10);
           const userCheckQuery = `SELECT * FROM users WHERE username = $1`;
           const checkCollaborator = await pool.query(userCheckQuery, [
-              collaborators[i].name,
+            collaborators[i].name,
           ]);
           if (checkCollaborator.rowCount === 0) {
-
-              const deleteTrackQuery = `DELETE FROM tracks WHERE id = $1`;
-              await pool.query(deleteTrackQuery, [trackResult.rows[0].id]);
-              const deleteAlbumQuery = `DELETE FROM track_album WHERE track_id = $1`;
-              await pool.query(deleteAlbumQuery, [trackResult.rows[0].id]);
-              const deleteGenreQuery = `DELETE FROM track_genre WHERE track_id = $1`;
-              await pool.query(deleteGenreQuery, [trackResult.rows[0].id]);
-              return callback({ status: 404, message: "Collaborator not found" });
+            const deleteTrackQuery = `DELETE FROM tracks WHERE id = $1`;
+            await pool.query(deleteTrackQuery, [trackResult.rows[0].id]);
+            const deleteAlbumQuery = `DELETE FROM track_album WHERE track_id = $1`;
+            await pool.query(deleteAlbumQuery, [trackResult.rows[0].id]);
+            const deleteGenreQuery = `DELETE FROM track_genre WHERE track_id = $1`;
+            await pool.query(deleteGenreQuery, [trackResult.rows[0].id]);
+            return callback({ status: 404, message: "Collaborator not found" });
           }
           const relateQuery = `
               INSERT INTO user_track (user_id, track_id,  artist_role, profit_share) VALUES ($1, $2, $3, $4)
           `;
           await pool.query(relateQuery, [
-              checkCollaborator.rows[0].id,
-              trackResult.rows[0].id,
-              'collaborator',
-              collaborators[i].profitShare
+            checkCollaborator.rows[0].id,
+            trackResult.rows[0].id,
+            "collaborator",
+            collaborators[i].profitShare,
           ]);
+        }
       }
-    }
       //console.log(sumProfit);
       const mainArtistProfit = 100 - sumProfit;
-      if(mainArtistProfit < 0){
+      if (mainArtistProfit < 0) {
         return callback({ status: 400, message: "Profit share is invalid" });
       }
 
-      if(mainArtistProfit === 100){
-        const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share, status) VALUES ($1, $2, $3, $4. $5)`;
+      if (mainArtistProfit === 100) {
+        const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share, status) VALUES ($1, $2, $3, $4, $5)`;
         await pool.query(mainArtistQuery, [
-            user_id,
-            trackResult.rows[0].id,
-            'original artist',
-            mainArtistProfit,
-            'approved'
+          user_id,
+          trackResult.rows[0].id,
+          "original artist",
+          mainArtistProfit,
+          "approved",
         ]);
         return callback(null, {
           status: 200,
@@ -245,10 +295,10 @@ const TrackModel = {
       }
       const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share) VALUES ($1, $2, $3, $4)`;
       await pool.query(mainArtistQuery, [
-          user_id,
-          trackResult.rows[0].id,
-          'original artist',
-          mainArtistProfit
+        user_id,
+        trackResult.rows[0].id,
+        "original artist",
+        mainArtistProfit,
       ]);
       return callback(null, {
         status: 200,
