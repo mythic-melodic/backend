@@ -278,7 +278,8 @@ const TrackModel = {
         return callback({ status: 400, message: "Profit share is invalid" });
       }
 
-      if (mainArtistProfit === 100) {
+      if(mainArtistProfit === 100){
+
         const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share, status) VALUES ($1, $2, $3, $4, $5)`;
         await pool.query(mainArtistQuery, [
           user_id,
