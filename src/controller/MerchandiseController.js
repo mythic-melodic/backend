@@ -18,8 +18,9 @@ class MerchandiseController {
   async createMerchandise(req, res) {
     const { name, album_id, stock, price, description, category } = req.body;
     const artist_id = req.user.id;
+  
     try {
-      const image = await useGoogleDriveUpload(req, res);
+      const image = await useGoogleDriveUpload(req); 
       const result = await MerchandiseModel.createMerchandise(
         name,
         artist_id,
@@ -30,11 +31,13 @@ class MerchandiseController {
         description,
         category
       );
+  
       return res.status(201).json({
         message: "Merchandise created successfully",
-        merchandise_id: result.merchandise_id,
+        merchandise_id: result,
       });
     } catch (error) {
+      console.error(error);  
       return res.status(500).json({ message: "Error: " + error.message });
     }
   }
@@ -90,16 +93,12 @@ class MerchandiseController {
       }
 
       let image = null;
-      // Check if a new image is uploaded
       if (req.file) {
-        // If a new image is uploaded, use Google Drive upload
         image = await useGoogleDriveUpload(req, res);
       } else {
-        // If no new image is uploaded, use the existing image from the database
         image = existingMerchandise.image;
       }
 
-      // Call the update method and pass an object with the new data
       const updatedMerchandise = await MerchandiseModel.updateMerchandise(
         merchandise_id,
         { name, albumId: album_id, stock, price, image, description, category }
