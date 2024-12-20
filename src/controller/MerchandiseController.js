@@ -1,4 +1,5 @@
 import MerchandiseModel from "../model/merchandise.model.js";
+import useGoogleDriveUpload from "../hooks/upload.media.js";
 
 class MerchandiseController {
   async getAllMerchandise(req, res) {
@@ -8,17 +9,17 @@ class MerchandiseController {
       if (!result) {
         return res.status(404).send("No merchandise found");
       }
-      res.status(200).send(result);
+      return res.status(200).send(result);
     } catch (error) {
-      res.status(500).send("Error: " + error.message);
+      return res.status(500).send("Error: " + error.message);
     }
   }
 
   async createMerchandise(req, res) {
-    const { name, album_id, stock, price, image, description } = req.body;
+    const { name, album_id, stock, price, description, category } = req.body;
     const artist_id = req.user.id;
-
     try {
+      const image = await useGoogleDriveUpload(req, res);
       const result = await MerchandiseModel.createMerchandise(
         name,
         artist_id,
@@ -26,14 +27,15 @@ class MerchandiseController {
         stock,
         price,
         image,
-        description
+        description,
+        category
       );
-      res.status(201).json({
+      return res.status(201).json({
         message: "Merchandise created successfully",
         merchandise_id: result.merchandise_id,
       });
     } catch (error) {
-      res.status(500).json({ message: "Error: " + error.message });
+      return res.status(500).json({ message: "Error: " + error.message });
     }
   }
 
@@ -44,9 +46,9 @@ class MerchandiseController {
       if (!result) {
         return res.status(404).send("No merchandise found");
       }
-      res.status(200).send(result);
+      return res.status(200).send(result);
     } catch (error) {
-      res.status(500).send("Error: " + error.message);
+      return res.status(500).send("Error: " + error.message);
     }
   }
 
@@ -62,16 +64,16 @@ class MerchandiseController {
       if (!result) {
         return res.status(404).send("No merchandise found");
       }
-      res.status(200).send(result);
+      return res.status(200).send(result);
     } catch (error) {
-      res.status(500).send("Error: " + error.message);
+      return res.status(500).send("Error: " + error.message);
     }
   }
 
   async updateMerchandise(req, res) {
     const merchandise_id = req.params.id;
     const artist_id = req.user.id;
-    const { name, album_id, stock, price, image, description } = req.body;
+    const { name, album_id, stock, price, description, category } = req.body;
 
     try {
       const existingMerchandise = await MerchandiseModel.getMerchandiseById(
@@ -87,21 +89,28 @@ class MerchandiseController {
         });
       }
 
+      let image = null;
+      // Check if a new image is uploaded
+      if (req.file) {
+        // If a new image is uploaded, use Google Drive upload
+        image = await useGoogleDriveUpload(req, res);
+      } else {
+        // If no new image is uploaded, use the existing image from the database
+        image = existingMerchandise.image;
+      }
+
+      // Call the update method and pass an object with the new data
       const updatedMerchandise = await MerchandiseModel.updateMerchandise(
         merchandise_id,
-        name,
-        album_id,
-        stock,
-        price,
-        image,
-        description
+        { name, albumId: album_id, stock, price, image, description, category }
       );
-      res.status(200).json({
+
+      return res.status(200).json({
         message: "Merchandise updated successfully",
         updatedMerchandise,
       });
     } catch (error) {
-      res.status(500).json({ message: "Error: " + error.message });
+      return res.status(500).json({ message: "Error: " + error.message });
     }
   }
 
@@ -123,13 +132,15 @@ class MerchandiseController {
         });
       }
 
-      await MerchandiseModel.deleteMerchandise(merchandise_id);
-      res.status(200).json({
+      const deletedMerchandise = await MerchandiseModel.deleteMerchandise(
+        merchandise_id
+      );
+      return res.status(200).json({
         message: "Merchandise deleted successfully",
-        deleteMerchandise: existingMerchandise,
+        deleteMerchandise: deletedMerchandise,
       });
     } catch (error) {
-      res.status(500).json({ message: "Error: " + error.message });
+      return res.status(500).json({ message: "Error: " + error.message });
     }
   }
 
@@ -203,7 +214,7 @@ class MerchandiseController {
 
   async getFavArtistStore(req, res) {
     try {
-      const userId = req.params.id; 
+      const userId = req.params.id;
       const data = await MerchandiseModel.getFavArtistStore(userId);
       if (!data || data.length === 0) {
         return res.status(404).json({
@@ -372,7 +383,7 @@ class MerchandiseController {
       return res.status(200).json({
         success: true,
         message: "Merchandise matching search term fetched successfully.",
-        data: searchResults, 
+        data: searchResults,
       });
     } catch (error) {
       console.error("Error fetching merchandise by search:", error);
