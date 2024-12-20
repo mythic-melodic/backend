@@ -33,13 +33,13 @@ class AccountController {
     res.status(200).send({ auth: false, token: null });
   }
   async getInfo(req, res) {
-    const { id, username } = req.params;
+    const { id } = req.params;
     try {
       AccountModel.getUserByID(id, (error, result) => {
         if (error) {
           res.status(500).send("Error: " + error.message);
         }
-        res.status(200).send(result.rows);
+        res.status(200).send(result);
       });
     } catch (error) {
       res.status(500).send("Error: " + error.message);
@@ -52,7 +52,7 @@ class AccountController {
         if (error) {
           res.status(500).send("Error: " + error.message);
         }
-        res.status(200).send(result.rows);
+        res.status(200).send(result);
       });
     } catch (error) {
       res.status(500).send("Error: " + error.message);
