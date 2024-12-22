@@ -91,7 +91,7 @@ class ArtistController {
         console.error("Database error:", error);
         return res.status(500).json({ error });
       }
-      return res.status(200).send(result.rows);
+      return res.status(200).send(result);
     });
   }
   async getAllTracksPending(req, res) {

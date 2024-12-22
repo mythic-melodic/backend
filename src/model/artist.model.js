@@ -140,9 +140,9 @@ const ArtistModel = {
     }
   },
   getAlbums: async (artistId, callback) => {
-    const query = `SELECT * FROM albums WHERE artist_id = $1 AND album_type ='album'`;
+    const query = `SELECT * FROM albums WHERE artist_id = ? AND album_type ='album'`;
     try {
-      const result = await pool.query(query, [artistId]);
+      const [result] = await pool.query(query, [artistId]);
       callback(null, result);
     } catch (error) {
       return callback(error);
@@ -196,10 +196,10 @@ const ArtistModel = {
                 SELECT o.* FROM orders o 
                 INNER JOIN order_merchandise om ON o.id = om.order_id 
                 INNER JOIN merchandise m ON om.merchandise_id = m.id 
-                WHERE artist_id = $1;
+                WHERE artist_id = ?;
                 `;
-      const result = await pool.query(query, [artistId]);
-      return result.rows;
+      const [result] = await pool.query(query, [artistId]);
+      return result;
     } catch (error) {
       throw new Error("Failed to get all orders by artist: " + error.message);
     }
@@ -212,9 +212,9 @@ const ArtistModel = {
       inner join user_track ut ON ut.track_id = t.id
       inner join track_album ta on ta.track_id = t.id
       inner join albums a on a.id = ta.album_id 
-      where ut.user_id = $1 and ut.status = 'approved'`;
-      const result = await pool.query(query, [artistId]);
-      return result.rows;
+      where ut.user_id = ? and ut.status = 'approved'`;
+      const [result] = await pool.query(query, [artistId]);
+      return result;
     } catch (error) {
       throw new Error("Failed to get all tracks by artist: " + error.message);
     }
@@ -223,11 +223,11 @@ const ArtistModel = {
     try {
       const query = `
         WITH RECURSIVE date_range AS (
-        SELECT date(now()) AS order_date
-        UNION ALL
-        SELECT (order_date - INTERVAL '1 day')::date
-        FROM date_range
-        WHERE order_date > date(now()) - INTERVAL '6 days'
+          SELECT DATE(NOW()) AS order_date
+          UNION ALL
+          SELECT DATE(order_date - INTERVAL 1 DAY)
+          FROM date_range
+          WHERE order_date > DATE(NOW()) - INTERVAL 6 DAY
         )
         SELECT 
             dr.order_date,
@@ -237,17 +237,17 @@ const ArtistModel = {
                 LEFT JOIN order_merchandise om ON om.order_id = o.id
                 LEFT JOIN merchandise m ON m.id = om.merchandise_id
                 WHERE dr.order_date = DATE(o.order_date)
-                AND m.artist_id = $1
+                AND m.artist_id = ?
             ), 0) AS order_count
         FROM date_range dr
         ORDER BY dr.order_date;
       `;
-      const result = await pool.query(query, [artistId]);
+      const [result] = await pool.query(query, [artistId]);
 
-      if (result.rows.length === 0) {
+      if (result.length === 0) {
         return null;
       }
-      return result.rows;
+      return result;
     } catch (error) {
       throw new Error("Database query failed: " + error.message);
     }
@@ -257,11 +257,11 @@ const ArtistModel = {
     try {
       const query = `
         WITH RECURSIVE date_range AS (
-        SELECT date(now()) AS order_date
-        UNION ALL
-        SELECT (order_date - INTERVAL '1 day')::date
-        FROM date_range
-        WHERE order_date > date(now()) - INTERVAL '6 days'
+          SELECT DATE(NOW()) AS order_date
+          UNION ALL
+          SELECT DATE(order_date - INTERVAL 1 DAY)
+          FROM date_range
+          WHERE order_date > DATE(NOW()) - INTERVAL 6 DAY
         )
         SELECT 
             dr.order_date,
@@ -271,17 +271,17 @@ const ArtistModel = {
                 LEFT JOIN order_merchandise om ON om.order_id = o.id
                 LEFT JOIN merchandise m ON m.id = om.merchandise_id
                 WHERE dr.order_date = DATE(o.order_date)
-                AND m.artist_id = $1
+                AND m.artist_id = ?
             ), 0) AS customer_count 
         FROM date_range dr
         ORDER BY dr.order_date;
       `;
-      const result = await pool.query(query, [artistId]);
+      const [result] = await pool.query(query, [artistId]);
 
-      if (result.rows.length === 0) {
+      if (result.length === 0) {
         return null;
       }
-      return result.rows;
+      return result;
     } catch (error) {
       throw new Error("Database query failed: " + error.message);
     }
@@ -289,29 +289,29 @@ const ArtistModel = {
 
   getWeeklySales: async (artistId) => {
     const query = `
-    WITH RECURSIVE date_range AS (
-        SELECT date(now()) AS order_date
+      WITH RECURSIVE date_range AS (
+        SELECT DATE(NOW()) AS order_date
         UNION ALL
-        SELECT (order_date - INTERVAL '1 day')::date
+        SELECT DATE(order_date - INTERVAL 1 DAY)
         FROM date_range
-        WHERE order_date > date(now()) - INTERVAL '6 days'
-    )
-    SELECT 
+        WHERE order_date > DATE(NOW()) - INTERVAL 6 DAY
+      )
+      SELECT 
         dr.order_date,
         COALESCE((
-            SELECT SUM(om.quantity * om.price_each) 
-            FROM orders o
-            LEFT JOIN order_merchandise om ON om.order_id = o.id
-            LEFT JOIN merchandise m ON m.id = om.merchandise_id
-            WHERE dr.order_date = DATE(o.order_date)
-            AND m.artist_id = $1
+          SELECT SUM(om.quantity * om.price_each) 
+          FROM orders o
+          LEFT JOIN order_merchandise om ON om.order_id = o.id
+          LEFT JOIN merchandise m ON m.id = om.merchandise_id
+          WHERE dr.order_date = DATE(o.order_date)
+          AND m.artist_id = ?
         ), 0) AS sales
-    FROM date_range dr
-    ORDER BY dr.order_date;
+      FROM date_range dr
+      ORDER BY dr.order_date;
     `;
     try {
-      const result = await pool.query(query, [artistId]);
-      return result.rows;
+      const [result] = await pool.query(query, [artistId]);
+      return result;
     } catch (error) {
       throw new Error("Database query failed: " + error.message);
     }
@@ -320,27 +320,27 @@ const ArtistModel = {
   getWeeklyStreams: async (artistId) => {
     try {
       const query = `
-      WITH RECURSIVE date_range AS (
-        SELECT date(now()) AS played_date
-        UNION ALL
-        SELECT (played_date - INTERVAL '1 day')::date
-        FROM date_range
-        WHERE played_date > date(now()) - INTERVAL '6 days'
-      )
-      SELECT 
+        WITH RECURSIVE date_range AS (
+          SELECT DATE(NOW()) AS played_date
+          UNION ALL
+          SELECT DATE(played_date - INTERVAL 1 DAY)
+          FROM date_range
+          WHERE played_date > DATE(NOW()) - INTERVAL 6 DAY
+        )
+        SELECT 
           dr.played_date,
           COALESCE((
-              SELECT COUNT(put.track_id)
-              FROM plays_user_track put
-              LEFT JOIN user_track ut ON ut.track_id = put.track_id
-              WHERE dr.played_date = DATE(put.played_at)
-              AND ut.user_id = $1
+            SELECT COUNT(put.track_id)
+            FROM plays_user_track put
+            LEFT JOIN user_track ut ON ut.track_id = put.track_id
+            WHERE dr.played_date = DATE(put.played_at)
+            AND ut.user_id = ?
           ), 0) AS play_count
-      FROM date_range dr
-      ORDER BY dr.played_date;
-`;
-      const result = await pool.query(query, [artistId]);
-      return result.rows;
+        FROM date_range dr
+        ORDER BY dr.played_date;
+      `;
+      const [result] = await pool.query(query, [artistId]);
+      return result;
     } catch (error) {
       throw new Error("Database query failed: " + error.message);
     }
@@ -349,17 +349,17 @@ const ArtistModel = {
   getMostPlayedTracks: async (artistId) => {
     try {
       const query = `
-      SELECT t.id, t.title, COUNT(p.track_id) AS play_count
+        SELECT t.id, t.title, COUNT(p.track_id) AS play_count
         FROM tracks t
         JOIN user_track ut ON t.id = ut.track_id
         LEFT JOIN plays_user_track p ON t.id = p.track_id
-        WHERE ut.user_id = $1 AND ut.artist_role = 'original artist'
+        WHERE ut.user_id = ? AND ut.artist_role = 'original artist'
         GROUP BY t.id, t.title
         ORDER BY play_count DESC
         LIMIT 10;
       `;
-      const result = await pool.query(query, [artistId]);
-      return result.rows;
+      const [result] = await pool.query(query, [artistId]);
+      return result;
     } catch (error) {
       throw new Error("Database query failed: " + error.message);
     }
@@ -368,13 +368,13 @@ const ArtistModel = {
   getMerchandiseTypes: async (artistId) => {
     try {
       const query = `
-      SELECT category, COUNT(*) as count
-      FROM merchandise
-      WHERE artist_id = $1
-      GROUP BY category
+        SELECT category, COUNT(*) as count
+        FROM merchandise
+        WHERE artist_id = ?
+        GROUP BY category
       `;
-      const result = await pool.query(query, [artistId]);
-      return result.rows;
+      const [result] = await pool.query(query, [artistId]);
+      return result;
     } catch (error) {
       throw new Error("Database query failed: " + error.message);
     }
