@@ -108,6 +108,7 @@ const ArtistModel = {
   },
   addAlbum: async (album, cover, callback) => {
     const { title, release_date, description, album_type, artist_id } = album;
+    const formattedReleaseDate = new Date(release_date).toISOString().slice(0, 19).replace("T", " ");
     try {
       const checkArtist = `SELECT * FROM users WHERE id = ? AND user_role = 'artist'`;
       const [artist] = await pool.query(checkArtist, [artist_id]);
@@ -125,7 +126,7 @@ const ArtistModel = {
       const [result] = await pool.query(query, [
         id,
         title,
-        release_date,
+        formattedReleaseDate,
         description,
         cover,
         album_type,
@@ -154,7 +155,8 @@ const ArtistModel = {
                                 t2.status, 
                                 users.display_name AS collaborator_name, 
                                 original_users.display_name AS original_artist_name,
-                                t2.artist_role AS collaborator_role
+                                t2.artist_role AS collaborator_role,
+                                t2.profit_share as contribution
                             FROM tracks
                             INNER JOIN track_album AS t1 ON tracks.id = t1.track_id
                             LEFT JOIN albums ON albums.id = t1.album_id
@@ -162,7 +164,7 @@ const ArtistModel = {
                             JOIN users ON t2.user_id = users.id
                             LEFT JOIN user_track AS original_artist ON original_artist.track_id = tracks.id AND original_artist.artist_role = 'original artist'
                             LEFT JOIN users AS original_users ON original_artist.user_id = original_users.id
-                            WHERE t2.status = 'pending' AND t2.artist_role = 'collaborator' AND users.id = ?`;
+                            WHERE t2.artist_role = 'collaborator' AND users.id = ?`;
       const [result] = await pool.query(query, [id]);
       return callback(null, result);
     } catch (error) {

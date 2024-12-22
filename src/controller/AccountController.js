@@ -39,7 +39,7 @@ class AccountController {
         if (error) {
           res.status(500).send("Error: " + error.message);
         }
-        res.status(200).send(result.rows);
+        res.status(200).send(result);
       });
     } catch (error) {
       res.status(500).send("Error: " + error.message);
@@ -52,7 +52,7 @@ class AccountController {
         if (error) {
           res.status(500).send("Error: " + error.message);
         }
-        res.status(200).send(result.rows);
+        res.status(200).send(result);
       });
     } catch (error) {
       res.status(500).send("Error: " + error.message);

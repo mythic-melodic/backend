@@ -184,20 +184,25 @@ const TrackModel = {
         return callback({ status: 403, message: "User is not an artist" });
       }
 
+      const formattedReleaseDate = new Date(release_date).toISOString().slice(0, 19).replace('T', ' ');
       // Step 3: Insert track into `tracks` table
       const insertTrackQuery = `
                 INSERT INTO tracks (id, title, lyrics, release_date, duration, language, track_url) 
-                VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *;
+                VALUES (?, ?, ?, ?, ?, ?, ?);
             `;
-      const [trackResult] = await pool.query(insertTrackQuery, [
+      const [res] = await pool.query(insertTrackQuery, [
         id,
         title,
         lyrics,
-        release_date,
+        formattedReleaseDate,
         duration,
         language,
         track_url,
       ]);
+      const trackQuery = `SELECT * FROM tracks WHERE id = ?`;
+      const [trackResult] = await pool.query(trackQuery, [id]);
+      // console.log("trackres",trackResult);
+
 
       // Step 4: Insert track into `track_album` table
       const albumCheckQuery = `SELECT * FROM albums WHERE id = ?`;
@@ -209,9 +214,9 @@ const TrackModel = {
       }
 
       const albumQuery = `
-          INSERT INTO track_album (track_id, album_id) VALUES (?, ?)
+          INSERT INTO track_album (track_id, album_id, track_order) VALUES (?, ?, ?)
       `;
-      await pool.query(albumQuery, [trackResult[0].id, album]);
+      await pool.query(albumQuery, [trackResult[0].id, album, '1']);
 
       // Step 5: Insert track into `track_genre` table
       for (let i = 0; i < genre.length; i++) {
@@ -251,13 +256,15 @@ const TrackModel = {
             return callback({ status: 404, message: "Collaborator not found" });
           }
           const relateQuery = `
-              INSERT INTO user_track (user_id, track_id, artist_role, profit_share) VALUES (?, ?, ?, ?)
+              INSERT INTO user_track (user_id, track_id, artist_role, profit_share, status, created_at) VALUES (?, ?, ?, ?, ?, ?)
           `;
           await pool.query(relateQuery, [
             checkCollaborator[0].id,
             trackResult[0].id,
             "collaborator",
             collaborators[i].profitShare,
+            "pending",
+            formattedReleaseDate,
           ]);
         }
       }
@@ -311,7 +318,7 @@ const TrackModel = {
         album,
       } = track;
       const id = track.track_id;
-
+      const formattedReleaseDate = new Date(release_date).toISOString().slice(0, 19).replace('T', ' ');
       // Step 1: Check if the track exists
       const trackCheckQuery = `SELECT * FROM tracks WHERE id = ?`;
       const [checkTrack] = await pool.query(trackCheckQuery, [id]);
@@ -324,18 +331,18 @@ const TrackModel = {
       const updateTrackQuery = `
                 UPDATE tracks 
                 SET title = ?, lyrics = ?, release_date = ?, duration = ?, language = ?
-                WHERE id = ?
-                RETURNING *;
+                WHERE id = ?;
             `;
-      const [trackResult] = await pool.query(updateTrackQuery, [
+      await pool.query(updateTrackQuery, [
         title,
         lyrics,
-        release_date,
+        formattedReleaseDate,
         duration,
         language,
         id,
       ]);
-
+      const trackQuery = `SELECT * FROM tracks WHERE id = ?`;
+      const [trackResult] = await pool.query(trackQuery, [id]);
       // Step 3: Update track in `track_album` table
       const updateAlbumQuery = `
                 UPDATE track_album 
