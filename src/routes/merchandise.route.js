@@ -11,6 +11,7 @@ router.post("/", tokenMiddleware.authenticateToken, upload.single("image"), merc
 router.put("/:id", tokenMiddleware.authenticateToken, upload.single("image"), merchandiseController.updateMerchandise);
 router.get("/trending-now", merchandiseController.getTrendingNow);
 router.get("/fav-artist-store/:id", merchandiseController.getFavArtistStore);
+router.get("/most-popular-store",merchandiseController.getMostPopularStore);
 router.get("/total-sold/:id", merchandiseController.getTotalSold);
 router.get("/detail/:id", merchandiseController.getMerchandiseDetailById);
 router.get("/search", merchandiseController.getMerchandiseBySearch);
