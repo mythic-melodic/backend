@@ -5,13 +5,21 @@ class PlaylistController {
     async createPlaylist(req, res) {
         const { name, description } = req.body;
         const creator_id = req.user.id;
-        const cover = await useGoogleDriveUpload(req, res);
+        let cover;
+
+        if (req.file) {
+          cover = await useGoogleDriveUpload(req, res); // Assign the result to the outer variable
+        } else {
+          cover = null; // Set cover to null if no file is uploaded
+        }
+        
         try {
             PlayListModel.createPlayList(name, creator_id, cover, description, (error, result) => {
                 if (error) {
                     res.status(400).send(error);
                 }
-                res.status(200).send({'message': result.message, 'playlist_id': result.playlist_id, 'cover': cover});
+                res.status(200).send({'message': result.message,'playlist_id': result.playlist_id, 'cover': cover});
+                console.log('Playlist created:', result);
             });
         } catch (error) {
             res.status(500).send("Error: " + error.message);

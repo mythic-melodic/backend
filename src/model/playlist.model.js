@@ -3,20 +3,19 @@ import pool from "../config/db.connect.js";
 const PlayListModel = {
   createPlayList: async (name, creator_id, cover, description, callback) => {
     try {
-      const query = `
-                INSERT INTO playlists (name, creator_id, cover, description, date_created, date_modified) 
-                VALUES (?, ?, ?, ?, NOW(), NOW())
-                RETURNING id
-            `;
+            const query = `
+        INSERT INTO playlists (name, creator_id, cover, description, date_created, date_modified) 
+        VALUES (?, ?, ?, ?, NOW(), NOW());
+      `;
 
       const [result] = await pool.query(query, [name, creator_id, cover, description]);
-      const playlist_id = result[0].id;
+      const playlist_id = result.insertId; // MySQL's last inserted ID
 
-      return callback(null,  { message: "Playlist created", playlist_id: playlist_id });
-    } catch (error) {
-      return callback(error);
-    }
-  },
+            return callback(null,  { message: "Playlist created", playlist_id: playlist_id });
+          } catch (error) {
+            return callback(error);
+          }
+        },
 
   getAllPlaylists: async (callback) => {
     try {
@@ -59,18 +58,29 @@ const PlayListModel = {
         UPDATE playlists
         SET name = ?, description = ?, cover = ?, date_modified = NOW()
         WHERE id = ?
-        RETURNING id, name, description, cover, date_modified;
       `;
+  
+      // Execute the query with the provided parameters
       const [result] = await pool.query(query, [name, description, cover, playlist_id]);
   
-      // Kiểm tra nếu không có bản ghi nào được cập nhật
-      if (result.length === 0) {
+      // Check if any rows were affected (indicating a successful update)
+      if (result.affectedRows === 0) {
         return callback(new Error("Playlist not found"));
       }
   
-      // Trả về thông tin của playlist vừa được cập nhật
-      return callback(null, result[0]);
+      // Retrieve the updated playlist's details
+      const selectQuery = `
+        SELECT id, name, description, cover, date_modified
+        FROM playlists
+        WHERE id = ?
+      `;
+      const [updatedPlaylist] = await pool.query(selectQuery, [playlist_id]);
+  
+      // Return the updated playlist details
+      return callback(null, updatedPlaylist[0]);
     } catch (error) {
+      // Log and return the error
+      console.error("Error updating playlist:", error);
       return callback(error);
     }
   },
@@ -127,29 +137,35 @@ const PlayListModel = {
       return callback(error);
     }
   },
-
   addTrackToPlaylist: async (playlist_id, track_id, callback) => {
     try {
-      const query = `
-        WITH next_order AS (
-          SELECT COALESCE(MAX(track_order), 0) + 1 AS next_track_order
-          FROM playlist_track
-          WHERE playlist_id = ?
-        )
+      // First, find the next track order for the playlist
+      const nextOrderQuery = `
+        SELECT COALESCE(MAX(track_order), 0) + 1 AS next_track_order
+        FROM playlist_track
+        WHERE playlist_id = ?;
+      `;
+      const [nextOrderResult] = await pool.execute(nextOrderQuery, [playlist_id]);
+      const nextTrackOrder = nextOrderResult[0]?.next_track_order || 1;
+  
+      // Insert the track into the playlist
+      const insertQuery = `
         INSERT INTO playlist_track (playlist_id, track_id, track_order, added_at)
-        SELECT ?, ?, next_track_order, NOW()
-        FROM next_order
-        ON DUPLICATE KEY UPDATE playlist_id = playlist_id
-        RETURNING *;`; // Return the inserted row, if successful
+        VALUES (?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE added_at = NOW();
+      `;
+      const [insertResult] = await pool.execute(insertQuery, [
+        playlist_id,
+        track_id,
+        nextTrackOrder,
+      ]);
   
-      const [result] = await pool.query(query, [playlist_id, track_id]);
-  
-      if (result.length === 0) {
-        // If no rows were inserted, it means the track already exists
+      // Check if the row was successfully inserted or updated
+      if (insertResult.affectedRows === 0) {
         return callback(null, "Track already exists in the playlist");
       }
   
-      // If successful, return a success message
+      // Success
       return callback(null, "Track added to playlist");
     } catch (error) {
       console.error("Error adding track to playlist:", error);
