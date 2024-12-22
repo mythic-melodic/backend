@@ -6,14 +6,14 @@ const AccountModel = {
   login: async (username, password, callback) => {
     try {
       const query = `SELECT * FROM users WHERE username = ?`;
-      const [rows] = await pool.query(query, [username]); // Destructure to get rows
+      const [result] = await pool.query(query, [username]);
 
       // Check if user exists
-      if (rows.length === 0) {
+      if (result.length === 0) {
         return callback("Invalid username or password");
       }
 
-      const user = rows[0];
+      const user = result[0];
       // Compare the provided password with the hashed password
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
@@ -48,8 +48,8 @@ const AccountModel = {
     const { username, display_name, email, password } = userData;
     try {
       const query = `SELECT * FROM users WHERE username = ?`;
-      const [rows] = await pool.query(query, [username]);
-      if (rows.length > 0) {
+      const [user] = await pool.query(query, [username]);
+      if (user.length > 0) {
         return callback("User already exists");
       }
       const salt = await bcrypt.genSalt(10);
@@ -68,7 +68,7 @@ const AccountModel = {
       });
     } catch (error) {
       return error;
-    } 
+    }
   },
   getUserByUsername: async (username, callback) => {
     const query = `SELECT * FROM users WHERE username = ?`;
@@ -100,10 +100,11 @@ const AccountModel = {
 
   deleteUserByUsername: async (username, callback) => {
     const check = `SELECT * FROM users WHERE username = ?`;
-    if (!pool.query(check, [username])) {
+    const [user] = await pool.query(check, [username]);
+    if (user.length === 0) {
       return callback("User not found");
     } else {
-      console.log("User found"); 
+      console.log("User found");
     }
     const query = `DELETE FROM users WHERE username = ?`;
     try {
@@ -115,20 +116,18 @@ const AccountModel = {
   },
   deleteUserById: async (id, callback) => {
     const check = `SELECT * FROM users WHERE id = ?`;
-    const user = await pool.query(check, [id]);
-    if (user.rowCount === 0) {
+    const [user] = await pool.query(check, [id]);
+    if (user.length === 0) {
       return callback("User not found");
-    } else {
-      // console.log('User found');
     }
 
     const deletePlaylists = `DELETE FROM playlists WHERE creator_id = ?`;
     const deleteUser = `DELETE FROM users WHERE id = ?`;
 
     try {
-      await pool.query("BEGIN");
+      await pool.query("START TRANSACTION");
       await pool.query(deletePlaylists, [id]);
-      const result = await pool.query(deleteUser, [id]);
+      const [result] = await pool.query(deleteUser, [id]);
       await pool.query("COMMIT");
       callback(null, result); // Pass the result to the callback
     } catch (error) {
@@ -138,18 +137,23 @@ const AccountModel = {
   },
   updateBalance: async (userId, newBalance) => {
     try {
-      const query = `
+      const updateQuery = `
             UPDATE users
-            SET balance = $1
-            WHERE id = $2
-            RETURNING *;
+            SET balance = ?
+            WHERE id = ?;
         `;
-      const result = await pool.query(query, [newBalance, userId]);
+      await pool.query(updateQuery, [newBalance, userId]);
 
-      if (result.rows.length === 0) {
+      const selectQuery = `
+            SELECT * FROM users
+            WHERE id = ?;
+        `;
+      const [result] = await pool.query(selectQuery, [userId]);
+
+      if (result.length === 0) {
         return null; // No user was updated
       }
-      return result.rows[0]; // Return the updated user data
+      return result[0]; // Return the updated user data
     } catch (error) {
       throw new Error("Database query failed: " + error.message);
     }
@@ -158,23 +162,23 @@ const AccountModel = {
     try {
       const query = `
             UPDATE users
-            SET balance = balance + $1
-            WHERE id = $2
+            SET balance = balance + ?
+            WHERE id = ?
             RETURNING *;
         `;
-      const result = await pool.query(query, [amountToAdd, userId]);
+      const [result] = await pool.query(query, [amountToAdd, userId]);
 
-      if (result.rows.length === 0) {
-        return null;
+      if (result.length === 0) {
+        return null; 
       }
-      return result.rows[0];
+      return result[0]; 
     } catch (error) {
       throw new Error("Database query failed: " + error.message);
     }
   },
-  updateUser: async (id, userData) => {
-    const { display_name, avatar, gender, bio, date_of_birth } = userData;
-    const query = `
+    updateUser: async (id, userData) => {
+        const { display_name, avatar, gender, bio, date_of_birth } = userData;
+        const query = `
             UPDATE users 
             SET 
                 display_name = ?, 
@@ -184,48 +188,49 @@ const AccountModel = {
                 date_of_birth = ? 
             WHERE id = ?
             RETURNING *`; // Trả về dữ liệu sau khi cập nhật
-    try {
-      const [result] = await pool.query(query, [
-        display_name,
-        avatar,
-        gender,
-        bio,
-        date_of_birth,
-        id,
-      ]);
-      return result[0]; // Trả về kết quả đầu tiên
-    } catch (error) {
-      throw new Error(error.message); // Ném lỗi để controller xử lý
-    }
-  },
-  changePassword: async (id, oldPassword, newPassword) => {
-    const getPasswordQuery = `SELECT password FROM users WHERE id = $1`;
-    const updatePasswordQuery = `UPDATE users SET password = $1 WHERE id = $2`;
-
-    try {
-      // Lấy mật khẩu hiện tại từ cơ sở dữ liệu
-      const result = await pool.query(getPasswordQuery, [id]);
-      if (result.rows.length === 0) {
-        throw new Error("User not found");
-      }
-
-      const currentPassword = result.rows[0].password;
-
-      // Kiểm tra oldPassword có khớp không
-      const isMatch = await bcrypt.compare(oldPassword, currentPassword);
-      if (!isMatch) {
-        throw new Error("Old password is incorrect");
-      }
-
-      // Nếu mật khẩu khớp, băm newPassword và cập nhật
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(newPassword, salt);
-      await pool.query(updatePasswordQuery, [hashedPassword, id]);
-
-      return { success: true, message: "Password updated successfully" };
-    } catch (error) {
-      throw new Error(error.message);
-    }
-  },
+        try {
+            const [result] = await pool.query(query, [
+                display_name,
+                avatar,
+                gender,
+                bio,
+                date_of_birth,
+                id,
+            ]);
+            return result[0]; // Trả về kết quả đầu tiên
+        } catch (error) {
+            throw new Error(error.message); // Ném lỗi để controller xử lý
+        }
+    },
+    changePassword: async (id, oldPassword, newPassword) => {
+        const getPasswordQuery = `SELECT password FROM users WHERE id = ?`;
+        const updatePasswordQuery = `UPDATE users SET password = ? WHERE id = ?`;
+    
+        try {
+            // Lấy mật khẩu hiện tại từ cơ sở dữ liệu
+            const [result] = await pool.query(getPasswordQuery, [id]);
+            if (result.length === 0) {
+                throw new Error("User not found");
+            }
+    
+            const currentPassword = result[0].password;
+    
+            // Kiểm tra oldPassword có khớp không
+            const isMatch = await bcrypt.compare(oldPassword, currentPassword);
+            if (!isMatch) {
+                throw new Error("Old password is incorrect");
+            }
+    
+            // Nếu mật khẩu khớp, băm newPassword và cập nhật
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(newPassword, salt);
+            await pool.query(updatePasswordQuery, [hashedPassword, id]);
+    
+            return { success: true, message: "Password updated successfully" };
+        } catch (error) {
+            throw new Error(error.message);
+        }
+    },
+    
 };
 export default AccountModel;
