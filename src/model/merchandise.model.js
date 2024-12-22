@@ -230,8 +230,6 @@ const MerchandiseModel = {
         JOIN 
             users ON half.artist_id = users.id
         ORDER BY RAND();
-
-
         `;
       const [result] = await pool.query(query, [userId]);
       if (!result || result.length === 0) {
@@ -367,6 +365,37 @@ const MerchandiseModel = {
     } catch (error) {
       console.error("Error fetching merchandise by search:", error);
       throw new Error("Failed to fetch merchandise: " + error.message);
+    }
+  },
+  getMostPopularStore: async () => {
+    try {
+      const query = `
+                select * from merchandise as m join (SELECT display_name, id
+        FROM users 
+        WHERE id = (
+            SELECT 
+                m.artist_id
+            FROM 
+                order_merchandise AS om
+            JOIN 
+                merchandise AS m 
+                ON om.merchandise_id = m.id
+            GROUP BY 
+                m.artist_id
+            ORDER BY 
+                SUM(om.quantity) DESC
+            LIMIT 1
+        )) as a on m.artist_id = a.id
+        `;
+      const [result] = await pool.query(query);
+      if (!result || result.length === 0) {
+        return { message: "no merchandise found" };
+      }
+      return result;
+    } catch (error) {
+      throw new Error(
+        "Failed to get favorite artist store merchandise: " + error.message
+      );
     }
   },
 };

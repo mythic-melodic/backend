@@ -18,9 +18,9 @@ class MerchandiseController {
   async createMerchandise(req, res) {
     const { name, album_id, stock, price, description, category } = req.body;
     const artist_id = req.user.id;
-  
+
     try {
-      const image = await useGoogleDriveUpload(req); 
+      const image = await useGoogleDriveUpload(req);
       const result = await MerchandiseModel.createMerchandise(
         name,
         artist_id,
@@ -31,13 +31,13 @@ class MerchandiseController {
         description,
         category
       );
-  
+
       return res.status(201).json({
         message: "Merchandise created successfully",
         merchandise_id: result,
       });
     } catch (error) {
-      console.error(error);  
+      console.error(error);
       return res.status(500).json({ message: "Error: " + error.message });
     }
   }
@@ -389,6 +389,32 @@ class MerchandiseController {
       return res.status(500).json({
         success: false,
         message: "Failed to fetch merchandise.",
+        error: error.message,
+      });
+    }
+  }
+  
+  async getMostPopularStore(req, res) {
+    try {
+      const result = await MerchandiseModel.getMostPopularStore();
+
+      if (!result || result.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "No merchandise found for the most popular store.",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Most popular store merchandise fetched successfully.",
+        data: result,
+      });
+    } catch (error) {
+      console.error("Error fetching most popular store:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch most popular store merchandise.",
         error: error.message,
       });
     }
