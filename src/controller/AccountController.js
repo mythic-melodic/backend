@@ -33,7 +33,7 @@ class AccountController {
     res.status(200).send({ auth: false, token: null });
   }
   async getInfo(req, res) {
-    const { id, username } = req.params;
+    const { id } = req.params;
     try {
       AccountModel.getUserByID(id, (error, result) => {
         if (error) {

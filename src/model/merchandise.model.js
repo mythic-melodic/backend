@@ -13,10 +13,9 @@ const MerchandiseModel = {
   ) => {
     try {
       const query = `
-      INSERT INTO merchandise (name, artist_id, album_id, stock, price, image, description, category, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);
-    `;
-
+        INSERT INTO merchandise (name, artist_id, album_id, stock, price, image, description, category, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);
+      `;
       const [result] = await pool.query(query, [
         name,
         artistId,
@@ -27,7 +26,6 @@ const MerchandiseModel = {
         description,
         category,
       ]);
-
       return result.insertId;
     } catch (error) {
       throw new Error("Failed to create merchandise: " + error.message);
@@ -37,8 +35,8 @@ const MerchandiseModel = {
   getAllMerchandise: async () => {
     try {
       const query = `SELECT * FROM merchandise`;
-      const [result] = await pool.query(query);
-      return result;
+      const [rows] = await pool.query(query);
+      return rows;
     } catch (error) {
       throw new Error("Failed to get all merchandise: " + error.message);
     }
@@ -47,61 +45,39 @@ const MerchandiseModel = {
   getMerchandiseById: async (merchandiseId) => {
     try {
       const query = `SELECT * FROM merchandise WHERE id = ?`;
-      const [result] = await pool.query(query, [merchandiseId]);
-      if (result.length === 0) {
-        return null;
-      }
-      return result[0];
+      const [rows] = await pool.query(query, [merchandiseId]);
+      return rows.length > 0 ? rows[0] : null;
     } catch (error) {
-      throw new Error("Database query failed: " + error.message);
+      throw new Error("Failed to get merchandise by ID: " + error.message);
     }
   },
 
   getAllMerchandiseByArtist: async (artistId, sort) => {
-    let orderByClause;
-    switch (sort) {
-      case "newest":
-        orderByClause = "ORDER BY created_at DESC";
-        break;
-      case "oldest":
-        orderByClause = "ORDER BY created_at ASC";
-        break;
-      case "popularityAscending":
-        orderByClause = "ORDER BY total_sold ASC";
-        break;
-      case "popularityDescending":
-        orderByClause = "ORDER BY total_sold DESC";
-        break;
-      case "priceAscending":
-        orderByClause = "ORDER BY price ASC";
-        break;
-      case "priceDescending":
-        orderByClause = "ORDER BY price DESC";
-        break;
-      case "stockAscending":
-        orderByClause = "ORDER BY stock ASC";
-        break;
-      case "stockDescending":
-        orderByClause = "ORDER BY stock DESC";
-        break;
-
-      default:
-        orderByClause = "ORDER BY created_at DESC";
-    }
+    const sortOptions = {
+      newest: "created_at DESC",
+      oldest: "created_at ASC",
+      popularityAscending: "total_sold ASC",
+      popularityDescending: "total_sold DESC",
+      priceAscending: "price ASC",
+      priceDescending: "price DESC",
+      stockAscending: "stock ASC",
+      stockDescending: "stock DESC",
+    };
+    const orderByClause = sortOptions[sort] || "created_at DESC";
 
     try {
       const query = `
-        SELECT m.id, m.name as name, m.price as price, m.image as image, m.stock as stock, COALESCE(SUM(om.quantity), 0) as total_sold
+        SELECT m.id, m.name, m.price, m.image, m.stock, COALESCE(SUM(om.quantity), 0) AS total_sold
         FROM merchandise m
         LEFT JOIN order_merchandise om ON m.id = om.merchandise_id
         WHERE m.artist_id = ?
         GROUP BY m.id
-        ${orderByClause};
+        ORDER BY ${orderByClause};
       `;
-      const [result] = await pool.query(query, [artistId]);
-      return result;
+      const [rows] = await pool.query(query, [artistId]);
+      return rows;
     } catch (error) {
-      throw new Error("Database query failed: " + error.message);
+      throw new Error("Failed to get merchandise by artist: " + error.message);
     }
   },
 
@@ -110,65 +86,23 @@ const MerchandiseModel = {
     { name, albumId, stock, price, image, description, category }
   ) => {
     try {
-      const setClauses = [];
+      const fields = [];
       const values = [];
-      let index = 1;
-  
-      if (name !== undefined) {
-        setClauses.push(`name = ?`);
-        values.push(name);
-        index++;
-      }
-      if (albumId !== undefined) {
-        setClauses.push(`album_id = ?`);
-        values.push(albumId);
-        index++;
-      }
-      if (stock !== undefined) {
-        setClauses.push(`stock = ?`);
-        values.push(stock);
-        index++;
-      }
-      if (price !== undefined) {
-        setClauses.push(`price = ?`);
-        values.push(price);
-        index++;
-      }
-      if (image !== undefined) {
-        setClauses.push(`image = ?`);
-        values.push(image);
-        index++;
-      }
-      if (description !== undefined) {
-        setClauses.push(`description = ?`);
-        values.push(description);
-        index++;
-      }
-      if (category !== undefined) {
-        setClauses.push(`category = ?`);
-        values.push(category);
-        index++;
-      }
-  
-      if (setClauses.length === 0) {
-        throw new Error("No valid fields to update");
-      }
-  
-      // Add the WHERE clause and return the updated row
-      const query = `
-        UPDATE merchandise
-        SET ${setClauses.join(', ')}
-        WHERE id = ?
-        RETURNING *;
-      `;
+      if (name) fields.push("name = ?"), values.push(name);
+      if (albumId) fields.push("album_id = ?"), values.push(albumId);
+      if (stock) fields.push("stock = ?"), values.push(stock);
+      if (price) fields.push("price = ?"), values.push(price);
+      if (image) fields.push("image = ?"), values.push(image);
+      if (description) fields.push("description = ?"), values.push(description);
+      if (category) fields.push("category = ?"), values.push(category);
+
+      if (!fields.length) throw new Error("No fields to update");
+
+      const query = `UPDATE merchandise SET ${fields.join(", ")} WHERE id = ?`;
       values.push(merchandiseId);
-  
+
       const [result] = await pool.query(query, values);
-  
-      if (result.length === 0) {
-        throw new Error("Failed to update merchandise, no such record found.");
-      }
-      return result[0];
+      return result.affectedRows > 0;
     } catch (error) {
       throw new Error("Failed to update merchandise: " + error.message);
     }
@@ -176,18 +110,14 @@ const MerchandiseModel = {
 
   deleteMerchandise: async (merchandiseId) => {
     try {
-      const query = `DELETE FROM merchandise WHERE id = ? RETURNING id`;
+      const query = `DELETE FROM merchandise WHERE id = ?`;
       const [result] = await pool.query(query, [merchandiseId]);
-
-      if (result.length === 0) {
-        throw new Error("Failed to delete merchandise, no such record found.");
-      }
-
-      return result[0];
+      return result.affectedRows > 0;
     } catch (error) {
       throw new Error("Failed to delete merchandise: " + error.message);
     }
   },
+
   getTotalSold: async (merchandiseId) => {
     try {
       const query = `
@@ -240,8 +170,8 @@ const MerchandiseModel = {
             JOIN 
                 orders o ON om.order_id = o.id
             WHERE 
-                MONTH(o.order_date) = MONTH(CURRENT_DATE)
-                AND YEAR(o.order_date) = YEAR(CURRENT_DATE)
+                EXTRACT(MONTH FROM o.order_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+                AND EXTRACT(YEAR FROM o.order_date) = EXTRACT(YEAR FROM CURRENT_DATE)
             GROUP BY 
                 m.id, m.name, m.description, m.price, m.image
             ORDER BY 
@@ -300,6 +230,8 @@ const MerchandiseModel = {
         JOIN 
             users ON half.artist_id = users.id
         ORDER BY RAND();
+
+
         `;
       const [result] = await pool.query(query, [userId]);
       if (!result || result.length === 0) {
@@ -346,12 +278,12 @@ const MerchandiseModel = {
       if (newStock < 0) {
         throw new Error("Stock cannot be negative");
       }
-      const updateQuery = `UPDATE merchandise SET stock = ? WHERE id = ? RETURNING *`;
-      const [updateResult] = await pool.query(updateQuery, [
-        newStock,
-        merchandiseId,
-      ]);
-      return updateResult[0];
+      const updateQuery = `UPDATE merchandise SET stock = ? WHERE id = ?`;
+      await pool.query(updateQuery, [newStock, merchandiseId]);
+
+      const selectQuery = `SELECT * FROM merchandise WHERE id = ?`;
+      const [updatedRows] = await pool.query(selectQuery, [merchandiseId]);
+      return updatedRows.length > 0 ? updatedRows[0] : null;
     } catch (error) {
       console.error("Error updating stock:", error);
       throw new Error("Failed to update stock: " + error.message);
@@ -417,26 +349,18 @@ const MerchandiseModel = {
         JOIN albums AS a ON m.album_id = a.id
         JOIN users AS u ON m.artist_id = u.id
         WHERE 
-          m.name LIKE ? 
-          OR CAST(m.category AS CHAR) LIKE ?
-          OR u.display_name LIKE ?
-          OR a.title LIKE ?
-          OR LOWER(m.name) LIKE LOWER(?)
-          OR LOWER(CAST(m.category AS CHAR)) LIKE LOWER(?)
-          OR LOWER(u.display_name) LIKE LOWER(?)
-          OR LOWER(a.title) LIKE LOWER(?)
-        ;
+          LOWER(m.name) LIKE LOWER(CONCAT('%', ?, '%'))
+          OR LOWER(CAST(m.category AS CHAR)) LIKE LOWER(CONCAT('%', ?, '%'))
+          OR LOWER(u.display_name) LIKE LOWER(CONCAT('%', ?, '%'))
+          OR LOWER(a.title) LIKE LOWER(CONCAT('%', ?, '%'));
       `;
-      // Use the search term with wildcards for partial matching
+
+      // Execute the query with the search term used for all placeholders
       const [result] = await pool.query(query, [
-        `%${searchTerm.toLowerCase()}%`,
-        `%${searchTerm.toLowerCase()}%`,
-        `%${searchTerm.toLowerCase()}%`,
-        `%${searchTerm.toLowerCase()}%`,
-        `%${searchTerm.toLowerCase()}%`,
-        `%${searchTerm.toLowerCase()}%`,
-        `%${searchTerm.toLowerCase()}%`,
-        `%${searchTerm.toLowerCase()}%`,
+        searchTerm,
+        searchTerm,
+        searchTerm,
+        searchTerm,
       ]);
 
       return result || [];
