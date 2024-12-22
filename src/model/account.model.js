@@ -176,32 +176,48 @@ const AccountModel = {
       throw new Error("Database query failed: " + error.message);
     }
   },
-    updateUser: async (id, userData) => {
-        const { display_name, avatar, gender, bio, date_of_birth } = userData;
-        const query = `
-            UPDATE users 
-            SET 
-                display_name = ?, 
-                avatar = ?, 
-                gender = ?, 
-                bio = ?, 
-                date_of_birth = ? 
-            WHERE id = ?
-            RETURNING *`; // Trả về dữ liệu sau khi cập nhật
-        try {
-            const [result] = await pool.query(query, [
-                display_name,
-                avatar,
-                gender,
-                bio,
-                date_of_birth,
-                id,
-            ]);
-            return result[0]; // Trả về kết quả đầu tiên
-        } catch (error) {
-            throw new Error(error.message); // Ném lỗi để controller xử lý
-        }
-    },
+  updateUser: async (id, userData) => {
+    const { display_name, avatar, gender, bio, date_of_birth, phone, address } = userData;
+  
+    const query = `
+        UPDATE users 
+        SET 
+            display_name = ?, 
+            avatar = ?, 
+            gender = ?, 
+            bio = ?, 
+            date_of_birth = ?, 
+            phone = ?, 
+            address = ?
+        WHERE id = ?;
+    `;
+  
+    try {
+      const [result] = await pool.query(query, [
+        display_name,
+        avatar,
+        gender,
+        bio,
+        date_of_birth,
+        phone,
+        address,
+        id,
+      ]);
+  
+      // Check if any row was updated
+      if (result.affectedRows === 0) {
+        throw new Error("User not found or no changes made");
+      }
+  
+      // Return the updated user's data by fetching it again
+      const fetchUpdatedUserQuery = `SELECT * FROM users WHERE id = ?`;
+      const [updatedUser] = await pool.query(fetchUpdatedUserQuery, [id]);
+  
+      return updatedUser[0];
+    } catch (error) {
+      throw new Error(error.message); // Throw error for the controller to handle
+    }
+  },  
     changePassword: async (id, oldPassword, newPassword) => {
         const getPasswordQuery = `SELECT password FROM users WHERE id = ?`;
         const updatePasswordQuery = `UPDATE users SET password = ? WHERE id = ?`;
