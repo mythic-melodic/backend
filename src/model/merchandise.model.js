@@ -232,7 +232,6 @@ const MerchandiseModel = {
         ORDER BY RAND();
         `;
       const [result] = await pool.query(query, [userId]);
-      console.log(result);
       if (!result || result.length === 0) {
         return { message: "no merchandise found" };
       }
