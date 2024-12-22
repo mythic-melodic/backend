@@ -5,7 +5,7 @@ const FavoriteModel = {
         try {
             const query = `
                 INSERT INTO likes_user_track (user_id, track_id, liked_at) 
-                VALUES ($1, $2, NOW())
+                VALUES (?, ?, NOW())
             `;
 
             await pool.query(query, [user_id, track_id]);
@@ -18,9 +18,9 @@ const FavoriteModel = {
     
     getFavoriteByUser: async (user_id, limit, offset, callback) => {
         try {
-            const query = `SELECT * FROM likes_user_track WHERE user_id = $1 LIMIT $2 OFFSET $3;`;
-            const result = await pool.query(query, [user_id, limit, offset]);
-            return callback(null, result.rows);
+            const query = `SELECT * FROM likes_user_track WHERE user_id = ? LIMIT ? OFFSET ?;`;
+            const [result] = await pool.query(query, [user_id, limit, offset]);
+            return callback(null, result);
         } catch (error) {
             return callback(error);
         }
@@ -28,9 +28,9 @@ const FavoriteModel = {
 
     getFavoriteByTrack: async (track_id, callback) => {
         try {
-            const query = `SELECT * FROM likes_user_track WHERE track_id = $1`;
-            const result = await pool.query(query, [track_id]);
-            return callback(null, result.rows, { track_id: track_id });
+            const query = `SELECT * FROM likes_user_track WHERE track_id = ?`;
+            const [result] = await pool.query(query, [track_id]);
+            return callback(null, result, { track_id: track_id });
         } catch (error) {
             return callback(error);
         }
@@ -38,7 +38,7 @@ const FavoriteModel = {
     
     removeFavorite: async (user_id, track_id, callback) => {
         try {
-            const query = `DELETE FROM likes_user_track WHERE user_id = $1 AND track_id = $2`;
+            const query = `DELETE FROM likes_user_track WHERE user_id = ? AND track_id = ?`;
             await pool.query(query, [user_id, track_id]);
             return callback(null, { message: "Favorite removed" });
         } catch (error) {

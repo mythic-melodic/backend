@@ -13,16 +13,16 @@ const LibraryModel = {
             JOIN 
                 tracks AS t ON put.track_id = t.id
             WHERE 
-                put.user_id = $1
+                put.user_id = ?
             GROUP BY 
                 t.id, t.title
             ORDER BY 
                 latest_played_at DESC
-            LIMIT $2 OFFSET $3;
+            LIMIT ? OFFSET ?;
             `;
 
-            const result = await pool.query(query, [user_id, limit, offset]);
-            return callback(null, result.rows);
+            const [result] = await pool.query(query, [user_id, limit, offset]);
+            return callback(null, result);
         } catch (error) {
             return callback(error);
         }
@@ -42,16 +42,16 @@ const LibraryModel = {
             JOIN 
                 albums AS a ON ta.album_id = a.id
             WHERE 
-                put.user_id = $1
+                put.user_id = ?
             GROUP BY
                 a.id, a.title, a.cover  
             ORDER BY 
                 MAX(put.played_at) DESC  
-            LIMIT $2 OFFSET $3;
+            LIMIT ? OFFSET ?;
             `;
 
-            const result = await pool.query(query, [user_id, limit, offset]);
-            return callback(null, result.rows);
+            const [result] = await pool.query(query, [user_id, limit, offset]);
+            return callback(null, result);
         } catch (error) {
             return callback(error);
         }
@@ -73,16 +73,16 @@ const LibraryModel = {
             JOIN 
                 users AS us ON ut.user_id = us.id
             WHERE 
-                put.user_id = $1
+                put.user_id = ?
             GROUP BY
                 us.id, us.display_name  
             ORDER BY 
                 last_played_at DESC  
-            LIMIT $2 OFFSET $3;
+            LIMIT ? OFFSET ?;
             `;
 
-            const result = await pool.query(query, [user_id, limit, offset]);
-            return callback(null, result.rows);
+            const [result] = await pool.query(query, [user_id, limit, offset]);
+            return callback(null, result);
         } catch (error) {
             return callback(error);
         }

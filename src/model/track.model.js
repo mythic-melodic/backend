@@ -1,55 +1,56 @@
 import pool from "../config/db.connect.js";
 import createId from "../hooks/idGenerator.js";
+
 const TrackModel = {
   getAllTracks: async (callback) => {
     try {
-      const query = `SELECT * FROM tracks where track_url is not null limit 100`;
-      const result = await pool.query(query);
-      return callback(null, result.rows);
+      const query = `SELECT * FROM tracks WHERE track_url IS NOT NULL LIMIT 100`;
+      const [result] = await pool.query(query);
+      return callback(null, result);
     } catch (error) {
       return callback(error);
     }
   },
+
   getById: async (id, callback) => {
     try {
-      const trackQuery = `SELECT * FROM tracks WHERE id = $1`;
-      const trackResult = await pool.query(trackQuery, [id]);
+      const trackQuery = `SELECT * FROM tracks WHERE id = ?`;
+      const [trackResult] = await pool.query(trackQuery, [id]);
 
-      if (trackResult.rows.length === 0) {
+      if (trackResult.length === 0) {
         return callback("Track not found");
       }
 
-      const genreQuery = `SELECT genre_id FROM track_genre WHERE track_id = $1`;
-      const genreResult = await pool.query(genreQuery, [id]);
+      const genreQuery = `SELECT genre_id FROM track_genre WHERE track_id = ?`;
+      const [genreResult] = await pool.query(genreQuery, [id]);
       const artistQuery = `SELECT users.display_name, users.username, users.id FROM user_track
       INNER JOIN users ON user_track.user_id = users.id 
-      WHERE user_track.track_id = $1`;
-      const artistResult = await pool.query(artistQuery, [id]);
-      const albumQuery = `select 
-                        albums.id as id,
-                        tracks.title as track_title,
-                        albums.title as album_title,
-                        albums.cover as cover
-                        from tracks
-                        inner join track_album on tracks.id = track_album.track_id
-                        inner join albums on albums.id = track_album.album_id
-                        where track_id = $1`;
-      const albumResult = await pool.query(albumQuery, [id]);
+      WHERE user_track.track_id = ?`;
+      const [artistResult] = await pool.query(artistQuery, [id]);
+      const albumQuery = `SELECT 
+                        albums.id AS id,
+                        tracks.title AS track_title,
+                        albums.title AS album_title,
+                        albums.cover AS cover
+                        FROM tracks
+                        INNER JOIN track_album ON tracks.id = track_album.track_id
+                        INNER JOIN albums ON albums.id = track_album.album_id
+                        WHERE track_id = ?`;
+      const [albumResult] = await pool.query(albumQuery, [id]);
       const result = {
-        track: trackResult.rows[0],
-        album: albumResult.rows.map((row) => ({
+        track: trackResult[0],
+        album: albumResult.map((row) => ({
           id: row.id,
           album_title: row.album_title,
           cover: row.cover,
         })), // Assuming multiple albums
-        genre: genreResult.rows.map((row) => row.genre_id), // Assuming multiple genres
-        artists: artistResult.rows.map((row) => ({
+        genre: genreResult.map((row) => row.genre_id), // Assuming multiple genres
+        artists: artistResult.map((row) => ({
           display_name: row.display_name,
           username: row.username,
           id: row.id,
         })), // Assuming multiple artists
       };
-      // console.log(result);
       const trackInfo = {
         id: result.track.id,
         title: result.track.title,
@@ -67,16 +68,16 @@ const TrackModel = {
       return callback(error);
     }
   },
+
   getAllTracksDisabled: async (callback) => {
     try {
       const query = `SELECT tracks.id, tracks.title, albums.cover, tracks.status, albums.artist_id
                       FROM tracks
-                      inner JOIN track_album AS t1 ON tracks.id = t1.track_id
-                      inner JOIN albums ON albums.id = t1.album_id
-                      WHERE tracks.track_url IS NOT NULL AND tracks.status = 'disable';`;
-      //tracks.track_url IS NOT NULL AND
-      const result = await pool.query(query);
-      return callback(null, result.rows);
+                      INNER JOIN track_album AS t1 ON tracks.id = t1.track_id
+                      INNER JOIN albums ON albums.id = t1.album_id
+                      WHERE tracks.track_url IS NOT NULL AND tracks.status = 'disable'`;
+      const [result] = await pool.query(query);
+      return callback(null, result);
     } catch (error) {
       return callback(error);
     }
@@ -85,23 +86,24 @@ const TrackModel = {
   enableTrack: async (id, callback) => {
     try {
       const checkCollaborator = await pool.query(
-        `SELECT * FROM user_track WHERE track_id = $1 and status ='approved'`,
+        `SELECT * FROM user_track WHERE track_id = ? AND status ='approved'`,
         [id]
       );
-      if (checkCollaborator.rowCount === 0) {
+      if (checkCollaborator.length === 0) {
         return callback("Track not approved by collaborator");
       }
-      const query = `UPDATE tracks SET status = 'public' WHERE id = $1`;
-      const result = await pool.query(query, [id]);
+      const query = `UPDATE tracks SET status = 'public' WHERE id = ?`;
+      const [result] = await pool.query(query, [id]);
       return callback(null, result);
     } catch (error) {
       return callback(error);
     }
   },
+
   disableTrack: async (id, callback) => {
     try {
-      const query = `DELETE FROM tracks WHERE id = $1`;
-      const result = await pool.query(query, [id]);
+      const query = `DELETE FROM tracks WHERE id = ?`;
+      const [result] = await pool.query(query, [id]);
       return callback(null, result);
     } catch (error) {
       return callback(error);
@@ -111,61 +113,37 @@ const TrackModel = {
   deleteTrackById: async (id, callback) => {
     try {
       // Begin a transaction
-      await pool.query("BEGIN");
+      await pool.query("START TRANSACTION");
 
       // Execute each DELETE statement with EXISTS condition
       await pool.query(
-        `
-        DELETE FROM track_album 
-        WHERE track_id = $1 
-        AND EXISTS (SELECT 1 FROM track_album WHERE track_id = $1);
-      `,
-        [id]
+        `DELETE FROM track_album WHERE track_id = ? AND EXISTS (SELECT 1 FROM track_album WHERE track_id = ?)`,
+        [id, id]
       );
 
       await pool.query(
-        `
-        DELETE FROM likes_user_track 
-        WHERE track_id = $1 
-        AND EXISTS (SELECT 1 FROM likes_user_track WHERE track_id = $1);
-      `,
-        [id]
+        `DELETE FROM likes_user_track WHERE track_id = ? AND EXISTS (SELECT 1 FROM likes_user_track WHERE track_id = ?)`,
+        [id, id]
       );
 
       await pool.query(
-        `
-        DELETE FROM track_genre 
-        WHERE track_id = $1 
-        AND EXISTS (SELECT 1 FROM track_genre WHERE track_id = $1);
-      `,
-        [id]
+        `DELETE FROM track_genre WHERE track_id = ? AND EXISTS (SELECT 1 FROM track_genre WHERE track_id = ?)`,
+        [id, id]
       );
 
       await pool.query(
-        `
-        DELETE FROM plays_user_track 
-        WHERE track_id = $1 
-        AND EXISTS (SELECT 1 FROM plays_user_track WHERE track_id = $1);
-      `,
-        [id]
+        `DELETE FROM plays_user_track WHERE track_id = ? AND EXISTS (SELECT 1 FROM plays_user_track WHERE track_id = ?)`,
+        [id, id]
       );
 
       await pool.query(
-        `
-        DELETE FROM playlist_track 
-        WHERE track_id = $1 
-        AND EXISTS (SELECT 1 FROM playlist_track WHERE track_id = $1);
-      `,
-        [id]
+        `DELETE FROM playlist_track WHERE track_id = ? AND EXISTS (SELECT 1 FROM playlist_track WHERE track_id = ?)`,
+        [id, id]
       );
 
       await pool.query(
-        `
-        DELETE FROM tracks 
-        WHERE id = $1 
-        AND EXISTS (SELECT 1 FROM tracks WHERE id = $1);
-      `,
-        [id]
+        `DELETE FROM tracks WHERE id = ? AND EXISTS (SELECT 1 FROM tracks WHERE id = ?)`,
+        [id, id]
       );
 
       // Commit the transaction
@@ -191,29 +169,27 @@ const TrackModel = {
         genre,
         album,
       } = track;
-      // const user_id = 8;
-      // const artist_role = 'original artist';
       const id = createId();
 
       // Step 1: Check if the user exists
-      const userCheckQuery = `SELECT * FROM users WHERE id = $1`;
-      const checkArtist = await pool.query(userCheckQuery, [user_id]);
+      const userCheckQuery = `SELECT * FROM users WHERE id = ?`;
+      const [checkArtist] = await pool.query(userCheckQuery, [user_id]);
 
-      if (checkArtist.rowCount === 0) {
+      if (checkArtist.length === 0) {
         return callback({ status: 404, message: "User not found" });
       }
 
       // Step 2: Validate user role
-      if (checkArtist.rows[0].user_role !== "artist") {
+      if (checkArtist[0].user_role !== "artist") {
         return callback({ status: 403, message: "User is not an artist" });
       }
 
       // Step 3: Insert track into `tracks` table
       const insertTrackQuery = `
                 INSERT INTO tracks (id, title, lyrics, release_date, duration, language, track_url) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
+                VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *;
             `;
-      const trackResult = await pool.query(insertTrackQuery, [
+      const [trackResult] = await pool.query(insertTrackQuery, [
         id,
         title,
         lyrics,
@@ -223,82 +199,78 @@ const TrackModel = {
         track_url,
       ]);
 
-      //Step 4: Insert track into `track_album` table
-      const albumCheckQuery = `SELECT * FROM albums WHERE id = $1`;
-      const checkAlbum = await pool.query(albumCheckQuery, [album]);
-      if (checkAlbum.rowCount === 0) {
-        const deleteTrackQuery = `DELETE FROM tracks WHERE id = $1`;
-        await pool.query(deleteTrackQuery, [trackResult.rows[0].id]);
+      // Step 4: Insert track into `track_album` table
+      const albumCheckQuery = `SELECT * FROM albums WHERE id = ?`;
+      const [checkAlbum] = await pool.query(albumCheckQuery, [album]);
+      if (checkAlbum.length === 0) {
+        const deleteTrackQuery = `DELETE FROM tracks WHERE id = ?`;
+        await pool.query(deleteTrackQuery, [trackResult[0].id]);
         return callback({ status: 404, message: "Album not found" });
       }
 
       const albumQuery = `
-          INSERT INTO track_album (track_id, album_id) VALUES ($1, $2)
+          INSERT INTO track_album (track_id, album_id) VALUES (?, ?)
       `;
-      await pool.query(albumQuery, [trackResult.rows[0].id, album]);
+      await pool.query(albumQuery, [trackResult[0].id, album]);
 
       // Step 5: Insert track into `track_genre` table
       for (let i = 0; i < genre.length; i++) {
-        const checkGenreQuery = `SELECT * FROM genres WHERE id = $1`;
+        const checkGenreQuery = `SELECT * FROM genres WHERE id = ?`;
         const genreId = genre[i].toLowerCase();
-        const checkGenre = await pool.query(checkGenreQuery, [genreId]);
-        if (checkGenre.rowCount === 0) {
-          const deleteTrackQuery = `DELETE FROM tracks WHERE id = $1`;
-          await pool.query(deleteTrackQuery, [trackResult.rows[0].id]);
-          const deleteAlbumQuery = `DELETE FROM track_album WHERE track_id = $1`;
-          await pool.query(deleteAlbumQuery, [trackResult.rows[0].id]);
+        const [checkGenre] = await pool.query(checkGenreQuery, [genreId]);
+        if (checkGenre.length === 0) {
+          const deleteTrackQuery = `DELETE FROM tracks WHERE id = ?`;
+          await pool.query(deleteTrackQuery, [trackResult[0].id]);
+          const deleteAlbumQuery = `DELETE FROM track_album WHERE track_id = ?`;
+          await pool.query(deleteAlbumQuery, [trackResult[0].id]);
           return callback({ status: 404, message: "Genre not found" });
         }
         const genreQuery = `
-                INSERT INTO track_genre (track_id, genre_id) VALUES ($1, $2)
+                INSERT INTO track_genre (track_id, genre_id) VALUES (?, ?)
             `;
-        await pool.query(genreQuery, [trackResult.rows[0].id, genreId]);
+        await pool.query(genreQuery, [trackResult[0].id, genreId]);
       }
 
-      // Step 6: insert track into 'user_track' table(collaborator)
+      // Step 6: Insert track into 'user_track' table (collaborator)
       const collaborators = JSON.parse(track.collaborator);
       let sumProfit = 0;
       if (collaborators.length > 0 && collaborators[0].name !== "") {
-        //console.log('Collaborators:', collaborators);
-
         for (let i = 0; i < collaborators.length; i++) {
           sumProfit += parseInt(collaborators[i].profitShare, 10);
-          const userCheckQuery = `SELECT * FROM users WHERE username = $1`;
-          const checkCollaborator = await pool.query(userCheckQuery, [
+          const userCheckQuery = `SELECT * FROM users WHERE username = ?`;
+          const [checkCollaborator] = await pool.query(userCheckQuery, [
             collaborators[i].name,
           ]);
-          if (checkCollaborator.rowCount === 0) {
-            const deleteTrackQuery = `DELETE FROM tracks WHERE id = $1`;
-            await pool.query(deleteTrackQuery, [trackResult.rows[0].id]);
-            const deleteAlbumQuery = `DELETE FROM track_album WHERE track_id = $1`;
-            await pool.query(deleteAlbumQuery, [trackResult.rows[0].id]);
-            const deleteGenreQuery = `DELETE FROM track_genre WHERE track_id = $1`;
-            await pool.query(deleteGenreQuery, [trackResult.rows[0].id]);
+          if (checkCollaborator.length === 0) {
+            const deleteTrackQuery = `DELETE FROM tracks WHERE id = ?`;
+            await pool.query(deleteTrackQuery, [trackResult[0].id]);
+            const deleteAlbumQuery = `DELETE FROM track_album WHERE track_id = ?`;
+            await pool.query(deleteAlbumQuery, [trackResult[0].id]);
+            const deleteGenreQuery = `DELETE FROM track_genre WHERE track_id = ?`;
+            await pool.query(deleteGenreQuery, [trackResult[0].id]);
             return callback({ status: 404, message: "Collaborator not found" });
           }
           const relateQuery = `
-              INSERT INTO user_track (user_id, track_id,  artist_role, profit_share) VALUES ($1, $2, $3, $4)
+              INSERT INTO user_track (user_id, track_id, artist_role, profit_share) VALUES (?, ?, ?, ?)
           `;
           await pool.query(relateQuery, [
-            checkCollaborator.rows[0].id,
-            trackResult.rows[0].id,
+            checkCollaborator[0].id,
+            trackResult[0].id,
             "collaborator",
             collaborators[i].profitShare,
           ]);
         }
       }
-      //console.log(sumProfit);
       const mainArtistProfit = 100 - sumProfit;
       if (mainArtistProfit < 0) {
         return callback({ status: 400, message: "Profit share is invalid" });
       }
 
-      if(mainArtistProfit === 100){
-
-        const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share, status) VALUES ($1, $2, $3, $4, $5)`;
+      if (mainArtistProfit === 100) {
+        const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share, status) VALUES (?, ?, ?, ?, ?)`;
         await pool.query(mainArtistQuery, [
           user_id,
-          trackResult.rows[0].id,
+          trackResult[0].id,
           "original artist",
           mainArtistProfit,
           "approved",
@@ -306,26 +278,27 @@ const TrackModel = {
         return callback(null, {
           status: 200,
           message: "Track added successfully",
-          track: trackResult.rows[0],
+          track: trackResult[0],
         });
       }
-      const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share) VALUES ($1, $2, $3, $4)`;
+      const mainArtistQuery = `INSERT INTO user_track (user_id, track_id, artist_role, profit_share) VALUES (?, ?, ?, ?)`;
       await pool.query(mainArtistQuery, [
         user_id,
-        trackResult.rows[0].id,
+        trackResult[0].id,
         "original artist",
         mainArtistProfit,
       ]);
       return callback(null, {
         status: 200,
         message: "Track added successfully",
-        track: trackResult.rows[0],
+        track: trackResult[0],
       });
     } catch (error) {
       console.error("Error in addTrack:", error);
       return callback({ status: 500, message: "Internal server error", error });
     }
   },
+
   updateTrack: async (track, callback) => {
     try {
       const {
@@ -338,22 +311,23 @@ const TrackModel = {
         album,
       } = track;
       const id = track.track_id;
+
       // Step 1: Check if the track exists
-      const trackCheckQuery = `SELECT * FROM tracks WHERE id = $1`;
-      const checkTrack = await pool.query(trackCheckQuery, [id]);
-  
-      if (checkTrack.rowCount === 0) {
+      const trackCheckQuery = `SELECT * FROM tracks WHERE id = ?`;
+      const [checkTrack] = await pool.query(trackCheckQuery, [id]);
+
+      if (checkTrack.length === 0) {
         return callback({ status: 404, message: "Track not found" });
       }
-  
+
       // Step 2: Update track in `tracks` table
       const updateTrackQuery = `
                 UPDATE tracks 
-                SET title = $1, lyrics = $2, release_date = $3, duration = $4, language = $5
-                WHERE id = $6
+                SET title = ?, lyrics = ?, release_date = ?, duration = ?, language = ?
+                WHERE id = ?
                 RETURNING *;
             `;
-      const trackResult = await pool.query(updateTrackQuery, [
+      const [trackResult] = await pool.query(updateTrackQuery, [
         title,
         lyrics,
         release_date,
@@ -361,42 +335,37 @@ const TrackModel = {
         language,
         id,
       ]);
-  
+
       // Step 3: Update track in `track_album` table
       const updateAlbumQuery = `
                 UPDATE track_album 
-                SET album_id = $1
-                WHERE track_id = $2;
+                SET album_id = ?
+                WHERE track_id = ?;
             `;
       await pool.query(updateAlbumQuery, [album, id]);
-  
-      // Step 4: Delete existing entries in `track_genre` table
-   // Step 4: Update entries in `track_genre` table
-for (let i = 0; i < genre.length; i++) {
-  const genreId =  genre[i].toLowerCase();
 
-  // Check if the combination of track_id and genre_id already exists
-  const checkGenreQuery = `SELECT 1 FROM track_genre WHERE track_id = $1 AND genre_id = $2`;
-  const checkGenreResult = await pool.query(checkGenreQuery, [id, genreId]);
+      // Step 4: Update entries in `track_genre` table
+      for (let i = 0; i < genre.length; i++) {
+        const genreId = genre[i].toLowerCase();
 
-  if (checkGenreResult.rowCount === 0) {
-    // If it does not exist, insert a new entry
-    const insertGenreQuery = `
-      INSERT INTO track_genre (track_id, genre_id) VALUES ($1, $2)
-    `;
-    await pool.query(insertGenreQuery, [id, genreId]);
-  } else {
-    // If it exists, update the entry (if there are other fields to update)
-    // For this example, we assume there are no other fields to update
-    // If there are, you can add the update logic here
-  }
-}
-  
+        // Check if the combination of track_id and genre_id already exists
+        const checkGenreQuery = `SELECT 1 FROM track_genre WHERE track_id = ? AND genre_id = ?`;
+        const [checkGenreResult] = await pool.query(checkGenreQuery, [id, genreId]);
+
+        if (checkGenreResult.length === 0) {
+          // If it does not exist, insert a new entry
+          const insertGenreQuery = `
+            INSERT INTO track_genre (track_id, genre_id) VALUES (?, ?)
+          `;
+          await pool.query(insertGenreQuery, [id, genreId]);
+        }
+      }
+
       // Step 6: Return success response
       return callback(null, {
         status: 200,
         message: "Track updated successfully",
-        track: trackResult.rows[0],
+        track: trackResult[0],
       });
     } catch (error) {
       console.error("Error in updateTrack:", error);
@@ -404,4 +373,5 @@ for (let i = 0; i < genre.length; i++) {
     }
   }
 };
+
 export default TrackModel;
