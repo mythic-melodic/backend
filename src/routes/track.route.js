@@ -8,7 +8,7 @@ router.get("/all", TrackController.getAllTracks);
 router.get("/disabled", TrackController.getAllTracksDisabled);
 router.put("/enable/:id", TrackController.enableTrack);
 router.put("/disable/:id", TrackController.disableTrack);
-
+router.put("/update",  TrackController.updateTrack);
 router.post('/add', upload.single('file'), TrackController.addTrack);
 router.delete("/delete/:id", TrackController.deleteTrackById);
 

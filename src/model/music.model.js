@@ -5,7 +5,7 @@ const MusicModel = {
     try {
       const query = `
                 INSERT INTO plays_user_track (user_id, track_id, played_at) 
-                VALUES ($1, $2, NOW())
+                VALUES (?, ?, NOW())
             `;
 
       await pool.query(query, [user_id, track_id]);
@@ -18,9 +18,9 @@ const MusicModel = {
 
   getPlayRecordByUser: async (user_id, callback) => {
     try {
-      const query = `SELECT * FROM plays_user_track WHERE user_id = $1`;
-      const result = await pool.query(query, [user_id]);
-      return callback(null, result.rows);
+      const query = `SELECT * FROM plays_user_track WHERE user_id = ?`;
+      const [result] = await pool.query(query, [user_id]);
+      return callback(null, result);
     } catch (error) {
       return callback(error);
     }
@@ -28,9 +28,9 @@ const MusicModel = {
 
   getPlayRecordByTrack: async (track_id, callback) => {
     try {
-      const query = `SELECT * FROM plays_user_track WHERE track_id = $1`;
-      const result = await pool.query(query, [track_id]);
-      return callback(null, result.rows);
+      const query = `SELECT * FROM plays_user_track WHERE track_id = ?`;
+      const [result] = await pool.query(query, [track_id]);
+      return callback(null, result);
     } catch (error) {
       return callback(error);
     }
@@ -41,14 +41,14 @@ const MusicModel = {
       const query = `
                 SELECT track_id, COUNT(*) AS play_count
                 FROM plays_user_track
-                WHERE played_at >= NOW() - INTERVAL '1 day'
+                WHERE played_at >= NOW() - INTERVAL 1 DAY
                 GROUP BY track_id
                 ORDER BY play_count DESC
                 LIMIT 10;
             `;
-      const result = await pool.query(query);
+      const [result] = await pool.query(query);
 
-      if (result.rows.length === 0) {
+      if (result.length === 0) {
         return callback(null, "No tracks played in the last 24 hours.");
       }
 
@@ -56,20 +56,19 @@ const MusicModel = {
       const getOrCreatePlaylistQuery = `
                 INSERT INTO playlists (name, date_created, date_modified, creator_id)
                 VALUES ('Today Top Hits', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 32)
-                ON CONFLICT (name, creator_id)
-                DO UPDATE SET date_modified = CURRENT_TIMESTAMP
+                ON DUPLICATE KEY UPDATE date_modified = CURRENT_TIMESTAMP
                 RETURNING id;
             `;
-      const playlistResult = await pool.query(getOrCreatePlaylistQuery);
-      const playlistId = playlistResult.rows[0].id;
+      const [playlistResult] = await pool.query(getOrCreatePlaylistQuery);
+      const playlistId = playlistResult[0].id;
 
       // 3. Xóa các bài hát cũ
-      await pool.query(`DELETE FROM playlist_track WHERE playlist_id = $1;`, [
+      await pool.query(`DELETE FROM playlist_track WHERE playlist_id = ?;`, [
         playlistId,
       ]);
 
       // 4. Chèn bài hát mới
-      const insertValues = result.rows.map((row) => [
+      const insertValues = result.map((row) => [
         playlistId,
         row.track_id,
         new Date().toISOString(),
@@ -78,7 +77,7 @@ const MusicModel = {
       const placeholders = insertValues
         .map(
           (_, index) =>
-            `($${index * 3 + 1}, $${index * 3 + 2}, $${index * 3 + 3})`
+            `(?, ?, ?)`
         )
         .join(", ");
 
@@ -106,9 +105,9 @@ const MusicModel = {
                 ORDER BY play_count DESC
                 LIMIT 10;
             `;
-      const result = await pool.query(query);
+      const [result] = await pool.query(query);
 
-      if (result.rows.length === 0) {
+      if (result.length === 0) {
         return callback(null, "No tracks played");
       }
 
@@ -116,20 +115,19 @@ const MusicModel = {
       const getOrCreatePlaylistQuery = `
                 INSERT INTO playlists (name, date_created, date_modified, creator_id)
                 VALUES ('Melodic Top Tracks', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 32)
-                ON CONFLICT (name, creator_id)
-                DO UPDATE SET date_modified = CURRENT_TIMESTAMP
+                ON DUPLICATE KEY UPDATE date_modified = CURRENT_TIMESTAMP
                 RETURNING id;
             `;
-      const playlistResult = await pool.query(getOrCreatePlaylistQuery);
-      const playlistId = playlistResult.rows[0].id;
+      const [playlistResult] = await pool.query(getOrCreatePlaylistQuery);
+      const playlistId = playlistResult[0].id;
 
       // 3. Xóa các bài hát cũ
-      await pool.query(`DELETE FROM playlist_track WHERE playlist_id = $1;`, [
+      await pool.query(`DELETE FROM playlist_track WHERE playlist_id = ?;`, [
         playlistId,
       ]);
 
       // 4. Chèn bài hát mới
-      const insertValues = result.rows.map((row) => [
+      const insertValues = result.map((row) => [
         playlistId,
         row.track_id,
         new Date().toISOString(),
@@ -138,7 +136,7 @@ const MusicModel = {
       const placeholders = insertValues
         .map(
           (_, index) =>
-            `($${index * 3 + 1}, $${index * 3 + 2}, $${index * 3 + 3})`
+            `(?, ?, ?)`
         )
         .join(", ");
 
@@ -160,14 +158,14 @@ const MusicModel = {
     try {
       const query = `SELECT track_id, COUNT(*) AS like_count
                 FROM likes_user_track
-                WHERE liked_at >= NOW() - INTERVAL '1 day'
+                WHERE liked_at >= NOW() - INTERVAL 1 DAY
                 GROUP BY track_id
                 ORDER BY like_count DESC
                 LIMIT 10;
             `;
-      const result = await pool.query(query);
+      const [result] = await pool.query(query);
 
-      if (result.rows.length === 0) {
+      if (result.length === 0) {
         return callback(null, "No tracks favorited in the last 24 hours.");
       }
 
@@ -175,20 +173,19 @@ const MusicModel = {
       const getOrCreatePlaylistQuery = `
                 INSERT INTO playlists (name, date_created, date_modified, creator_id)
                 VALUES ('Today Top Favorite Tracks', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 32)
-                ON CONFLICT (name, creator_id)
-                DO UPDATE SET date_modified = CURRENT_TIMESTAMP
+                ON DUPLICATE KEY UPDATE date_modified = CURRENT_TIMESTAMP
                 RETURNING id;
             `;
-      const playlistResult = await pool.query(getOrCreatePlaylistQuery);
-      const playlistId = playlistResult.rows[0].id;
+      const [playlistResult] = await pool.query(getOrCreatePlaylistQuery);
+      const playlistId = playlistResult[0].id;
 
       // 3. Xóa các bài hát cũ
-      await pool.query(`DELETE FROM playlist_track WHERE playlist_id = $1;`, [
+      await pool.query(`DELETE FROM playlist_track WHERE playlist_id = ?;`, [
         playlistId,
       ]);
 
       // 4. Chèn bài hát mới
-      const insertValues = result.rows.map((row) => [
+      const insertValues = result.map((row) => [
         playlistId,
         row.track_id,
         new Date().toISOString(),
@@ -197,7 +194,7 @@ const MusicModel = {
       const placeholders = insertValues
         .map(
           (_, index) =>
-            `($${index * 3 + 1}, $${index * 3 + 2}, $${index * 3 + 3})`
+            `(?, ?, ?)`
         )
         .join(", ");
 
@@ -252,11 +249,11 @@ const MusicModel = {
                 t.duration,
                 t.track_url,
                 t.cover,
-                COALESCE(array_agg(DISTINCT g.genre_id) FILTER (WHERE g.genre_id IS NOT NULL), '{}') AS genres,
+                COALESCE(GROUP_CONCAT(DISTINCT g.genre_id), '') AS genres,
                 COALESCE(
-                    json_agg(
-                        DISTINCT jsonb_build_object('id', a.artist_id, 'display_name', a.display_name, 'username', a.username)
-                    ) FILTER (WHERE a.artist_id IS NOT NULL), 
+                    JSON_ARRAYAGG(
+                        DISTINCT JSON_OBJECT('id', a.artist_id, 'display_name', a.display_name, 'username', a.username)
+                    ), 
                     '[]'
                 ) AS artists
             FROM 
@@ -278,8 +275,8 @@ const MusicModel = {
                 t.release_date DESC
             LIMIT 8;
             `;
-      const result = await pool.query(query);
-      return callback(null, result.rows);
+      const [result] = await pool.query(query);
+      return callback(null, result);
     } catch (error) {
       return callback(error);
     }
@@ -310,8 +307,8 @@ const MusicModel = {
             ORDER BY ap.total_plays DESC
             LIMIT 10;
             `;
-      const result = await pool.query(query);
-      return callback(null, result.rows);
+      const [result] = await pool.query(query);
+      return callback(null, result);
     } catch (error) {
       return callback(error);
     }
@@ -338,8 +335,8 @@ const MusicModel = {
             ORDER BY ap.total_plays DESC
             LIMIT 10;
             `;
-      const result = await pool.query(query);
-      return callback(null, result.rows);
+      const [result] = await pool.query(query);
+      return callback(null, result);
     } catch (error) {
       return callback(error);
     }
@@ -353,8 +350,8 @@ const MusicModel = {
             WHERE is_public = true 
             AND name NOT IN ('Today Top Hits', 'Melodic Top Tracks', 'Today Top Favorite Tracks');
             `;
-      const result = await pool.query(query);
-      return callback(null, result.rows);
+      const [result] = await pool.query(query);
+      return callback(null, result);
     } catch (error) {
       return callback(error);
     }
